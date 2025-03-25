@@ -21,9 +21,9 @@ $instagram = "https://www.instagram.com/pxr15_";
 
 // all the api you need
 
-$api = "https://your-hosted-api.com/api/v2/hianime"; //https://github.com/ghoshRitesh12/aniwatch-api
-$zpi = "https://your-hosted-api.com/api"; //https://github.com/PacaHat/zen-api
-$proxy = "https://your-hosted-proxy.com/api/v1/streamingProxy?url="; //https://github.com/MetaHat/m3u8-streaming-proxy
+$api = "https://aniwatch-api-wheat.vercel.app//api/v2/hianime"; //https://github.com/ghoshRitesh12/aniwatch-api
+$zpi = "https://zen-api-nu.vercel.app/api"; //https://github.com/PacaHat/zen-api
+$proxy = "https://m3u8-proxy-five-nu.vercel.app/api/v1/streamingProxy?url="; //https://github.com/MetaHat/m3u8-streaming-proxy
 
 // Cloudflare Turnstile credentials // Use Links Below 
 $cloudflare_turnstile_site_key = 'your_cloudflare_site_key'; // https://www.cloudflare.com/application-services/products/turnstile/
