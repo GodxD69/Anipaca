@@ -17,13 +17,8 @@
                                 <div class="film_list-wrap">
                                     
                                     <?php
-                                    // Fetch JSON data
-                                    $ch = curl_init();
-                                    curl_setopt($ch, CURLOPT_URL, "$zpi/recently-updated");
-                                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                                    $json = curl_exec($ch);
-                                    curl_close($ch);
-                                    $json = json_decode($json, true);
+                                    require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
+                                    $json = jikan_category_list('recently-updated');
 
                                     // Check if 'results' and 'data' exist
                                     if (isset($json['results']['data']) && is_array($json['results']['data'])) {

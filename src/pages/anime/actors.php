@@ -1,21 +1,32 @@
 <?php
-$actorId = basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
-$apiUrl = "$zpi/actors/{$actorId}";
+require_once($_SERVER['DOCUMENT_ROOT'] . '/_config.php');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
 
-try {
-    $response = file_get_contents($apiUrl);
-    if ($response !== false) {
-        $data = json_decode($response, true);
-        if ($data && isset($data['success']) && $data['success']) {
-            $actor = $data['results']['data'][0];
-        } else {
-            $errorMessage = 'Failed to fetch actor data. Please try again later.';
+$actorId = preg_replace('/[^0-9]/', '', (string)($_GET['slug'] ?? basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH))));
+$actor = null;
+$errorMessage = null;
+
+if ($actorId === '') {
+    $errorMessage = 'Actor not found.';
+} else {
+    $data = jikan_actor($actorId);
+    if (!empty($data['success']) && !empty($data['results']['data'][0])) {
+        $actor = $data['results']['data'][0];
+        if (empty($actor['about']['style']) && !empty($actor['about']['description'])) {
+            $actor['about']['style'] = nl2br(htmlspecialchars($actor['about']['description']));
+        }
+        if (!isset($actor['roles']) || !is_array($actor['roles'])) {
+            $actor['roles'] = [];
         }
     } else {
-        $errorMessage = 'Could not connect to the API.';
+        $errorMessage = 'Failed to fetch actor data. Please try again later.';
     }
-} catch (Exception $e) {
-    $errorMessage = 'An error occurred: ' . $e->getMessage();
+}
+
+if (!$actor) {
+    http_response_code(404);
+    echo htmlspecialchars($errorMessage ?: 'Actor not found.');
+    exit;
 }
 ?>
 <!DOCTYPE html>

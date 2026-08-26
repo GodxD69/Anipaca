@@ -1,44 +1,38 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 
 require '_config.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php';
 session_start();
 
-$query = $_SERVER['QUERY_STRING'] ?: 'sort=default';
+$queryString = $_SERVER['QUERY_STRING'] ?: 'sort=default';
+parse_str($queryString, $filterParams);
 
-if ($query) {
-    $apiUrl = "$zpi/filter?$query";
+$searchResults = [];
+$currentPage = 1;
+$totalPages = 1;
+$hasNextPage = false;
+$totalResults = 0;
+$errorMessage = null;
+$data = null;
 
-    try {
-        $response = file_get_contents($apiUrl);
-        if ($response !== false) {
-            $data = json_decode($response, true);
-            if ($data && isset($data['success']) && $data['success'] && isset($data['results']['data'])) {
-                $searchResults = $data['results']['data'];
-                $currentPage = $data['results']['currentPage'] ?? 1;
-                $totalPages = $data['results']['totalPage'] ?? 1;
-                $hasNextPage = $data['results']['hasNextPage'] ?? false;
-            } else {
-                $errorMessage = 'Failed to fetch search results. Please try again later.';
-            }
-        } else {
-            $errorMessage = 'Could not connect to the API.';
-        }
-    } catch (Exception $e) {
-        $errorMessage = 'An error occurred: ' . $e->getMessage();
+try {
+    $data = jikan_filter($filterParams);
+    if (!empty($data['success']) && isset($data['results']['data'])) {
+        $searchResults = $data['results']['data'];
+        $currentPage = (int)($data['results']['currentPage'] ?? 1);
+        $totalPages = max(1, (int)($data['results']['totalPage'] ?? 1));
+        $hasNextPage = !empty($data['results']['hasNextPage']);
+        $totalResults = (int)($data['results']['total'] ?? count($searchResults));
+    } else {
+        $errorMessage = 'Failed to fetch search results. Please try again later.';
     }
+} catch (Exception $e) {
+    $errorMessage = 'An error occurred: ' . $e->getMessage();
 }
 
 $itemsPerPage = 36;
-$totalResults = 0;
-if (isset($data['results']['total'])) {
-    $totalResults = $data['results']['total'];
-} elseif (isset($data['results']['data'])) {
-    $totalResults = count($data['results']['data']) + (($totalPages - 1) * $itemsPerPage);
-} else {
-    $totalResults = $totalPages * $itemsPerPage;
-}
 
 ?>
 
@@ -275,7 +269,7 @@ if (isset($data['results']['total'])) {
                 query.set('page', '1');
             }
 
-            const apiUrl = `<?= $zpi ?>/filter?${query.toString()}`;
+const apiUrl = `<?= $zpi ?>/filter?${query.toString()}`;
 
             fetch(apiUrl)
                 .then(response => response.json())

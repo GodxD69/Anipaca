@@ -1,9 +1,10 @@
 <?php
 require_once('../../_config.php');
+require_once(__DIR__ . '/../api/jikan_client.php');
 header('Content-Type: application/json');
 
 if (isset($_GET['keyword'])) {
-    $keyword = trim($_GET['keyword']); // DO NOT alter the keyword here
+    $keyword = trim($_GET['keyword']);
     $cacheKey = md5($keyword);
     $cachePath = __DIR__ . '/../../cache/search/';
     $cacheFile = $cachePath . $cacheKey . '.json';
@@ -14,29 +15,20 @@ if (isset($_GET['keyword'])) {
     }
 
     if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < $cacheTime)) {
-        echo file_get_contents($cacheFile);
-        exit;
+        $cached = file_get_contents($cacheFile);
+        $decoded = json_decode($cached, true);
+        if (is_array($decoded) && !empty($decoded['success'])) {
+            echo $cached;
+            exit;
+        }
+        @unlink($cacheFile);
     }
 
-    $apiUrl = "$zpi/search?keyword=" . urlencode($keyword); // Use the full URL here
-
     try {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $apiUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        
-        $response = curl_exec($ch);
-        
-        if (curl_errno($ch)) {
-            throw new Exception('Curl error: ' . curl_error($ch));
-        }
-        
-        curl_close($ch);
+        $data = jikan_search($keyword);
 
-        $data = json_decode($response, true);
-
-        if ($data && isset($data['success']) && $data['success']) {
+        if ($data && !empty($data['success'])) {
+            $response = json_encode($data);
             file_put_contents($cacheFile, $response);
             echo $response;
         } else {
@@ -44,7 +36,6 @@ if (isset($_GET['keyword'])) {
                 'success' => false,
                 'message' => 'No results found'
             ]);
-            file_put_contents($cacheFile, $errorResponse);
             echo $errorResponse;
         }
     } catch (Exception $e) {

@@ -1,5 +1,5 @@
 // Define a cache name
-const CACHE_NAME = 'anipaca-cache-v1';
+const CACHE_NAME = 'anipaca-cache-v2';
 
 // ShareThis domains to bypass
 const BYPASS_DOMAINS = [

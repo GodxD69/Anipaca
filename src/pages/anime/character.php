@@ -1,43 +1,45 @@
 <?php
 
-//error_reporting(E_ALL);
-//ini_set('display_errors', 1);
-
 require_once($_SERVER['DOCUMENT_ROOT'] . '/_config.php');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
 session_start();
 
-$characterId = basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+$characterId = preg_replace('/[^0-9]/', '', (string)($_GET['slug'] ?? basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH))));
 
-$cacheFile = $_SERVER['DOCUMENT_ROOT'] . "/cache/chInfo/character_{$characterId}.json";
-$cacheDuration = 3600; 
+$name = '';
+$profile = '';
+$japaneseName = '';
+$style = '';
+$description = '';
+$voiceActors = [];
+$animeography = [];
+$errorMessage = null;
 
-if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheDuration) {
-    $response = file_get_contents($cacheFile);
+if ($characterId === '') {
+    $errorMessage = 'Character not found.';
 } else {
-    $apiUrl = "$zpi/character/{$characterId}"; 
-
-    try {
-        $response = file_get_contents($apiUrl);
-        if ($response !== false) {
-            $data = json_decode($response, true);
-            if ($data && isset($data['success']) && $data['success'] && isset($data['results']['data'][0])) {
-                $character = $data['results']['data'][0];
-                $name = $character['name'];
-                $profile = $character['profile'];
-                $japaneseName = $character['japaneseName'];
-                $style = $character['about']['style'];
-                $description = $character['about']['description'];
-                $voiceActors = $character['voiceActors'];
-                $animeography = $character['animeography'];
-            } else {
-                $errorMessage = 'Failed to fetch character data. Please try again later.';
-            }
-        } else {
-            $errorMessage = 'Could not connect to the API.';
+    $data = jikan_character($characterId);
+    if (!empty($data['success']) && !empty($data['results']['data'][0])) {
+        $character = $data['results']['data'][0];
+        $name = $character['name'] ?? '';
+        $profile = $character['profile'] ?? '';
+        $japaneseName = $character['japaneseName'] ?? '';
+        $style = $character['about']['style'] ?? '';
+        $description = $character['about']['description'] ?? '';
+        $voiceActors = $character['voiceActors'] ?? [];
+        $animeography = $character['animeography'] ?? [];
+        if ($style === '' && $description !== '') {
+            $style = nl2br(htmlspecialchars($description));
         }
-    } catch (Exception $e) {
-        $errorMessage = 'An error occurred: ' . $e->getMessage();
+    } else {
+        $errorMessage = 'Failed to fetch character data. Please try again later.';
     }
+}
+
+if ($errorMessage && $name === '') {
+    http_response_code(404);
+    echo htmlspecialchars($errorMessage);
+    exit;
 }
 
 ?>
@@ -59,7 +61,7 @@ if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheDuration
     <meta http-equiv="Content-Language" content="en">
     <meta property="og:title" content=" <?= htmlspecialchars($name) ?> on <?=$websiteTitle?>">
     <meta property="og:description"
-        content=" <?= htmlspecialchars($description) ?> on <?=$websiteTitle?> in HD with No Ads. Watch anime online">
+        content=" <?= htmlspecialchars(mb_substr($description, 0, 150)) ?> on <?=$websiteTitle?> in HD with No Ads. Watch anime online">
     <meta property="og:locale" content="en_US">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="<?=$websiteTitle?>">
@@ -106,7 +108,6 @@ if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheDuration
                 <div class="anis-cover" style="background-image: url(<?= htmlspecialchars($profile) ?>)"></div>
             </div>
         </div>
-        <!--actor page-->
         <div class="container">
             <div class="actor-page-wrap">
                 <div class="avatar avatar-circle"><img src="<?= htmlspecialchars($profile) ?>" alt="<?= htmlspecialchars($name) ?>"></div>
@@ -135,7 +136,7 @@ if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheDuration
                     <div class="tab-content">
                         <div id="bio" class="tab-pane show active">
                             <div class="bio">
-                                <?= htmlspecialchars_decode($style) ?>
+                                <?= $style !== '' ? $style : '<p>No biography available.</p>' ?>
                             </div>
                         </div>
                         <div id="animeography" class="tab-pane fade">
@@ -145,6 +146,9 @@ if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheDuration
                                         <div class="cbox-content">
                                             <div class="anif-block-ul">
                                                 <ul class="ulclear">
+                                                    <?php if (empty($animeography)): ?>
+                                                        <li><p>No animeography available.</p></li>
+                                                    <?php endif; ?>
                                                     <?php foreach ($animeography as $anime): ?>
                                                     <li>
                                                         <div class="film-poster">
@@ -182,6 +186,9 @@ if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheDuration
                             <div class="sub-box sub-box-actor">
                                 <div class="sub-box-list">
                                     <div class="voice-actors">
+                                        <?php if (empty($voiceActors)): ?>
+                                            <p>No voice actors available.</p>
+                                        <?php endif; ?>
                                         <?php foreach ($voiceActors as $actor): ?>
                                             <div class="per-info">
                                                 <a href="/actors/<?= htmlspecialchars($actor['id']) ?>" class="pi-avatar">
@@ -202,7 +209,6 @@ if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheDuration
                 </div>
             </div>
         </div>
-        <!--/actor page-->
     </div>
         </div>
         <?php include $_SERVER['DOCUMENT_ROOT'] . '/src/component/footer.php'; ?>
@@ -219,7 +225,6 @@ if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheDuration
         <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
         <script type="text/javascript" src="<?= $websiteUrl ?>/src/assets/js/function.js"></script>
 
-         0
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
     </div>
@@ -266,19 +271,17 @@ if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheDuration
         });
     });
 
-    // Function to show toast notification
     function showToast(message) {
         const toast = document.createElement('div');
         toast.className = 'toast show';
         toast.innerText = message;
         document.getElementById('toast-container').appendChild(toast);
 
-        // Remove the toast after 3 seconds
         setTimeout(() => {
             toast.classList.remove('show');
             setTimeout(() => {
                 toast.remove();
-            }, 500); // Match with the CSS transition duration
+            }, 500);
         }, 3000);
     }
     </script>
@@ -287,7 +290,7 @@ if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheDuration
 
     <style>
     .toast {
-        background-color: rgba(0, 128, 0, 0.9); /* Green background */
+        background-color: rgba(0, 128, 0, 0.9);
         color: white;
         padding: 10px 20px;
         border-radius: 5px;
@@ -303,4 +306,3 @@ if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheDuration
 </body>
 
 </html>
-
