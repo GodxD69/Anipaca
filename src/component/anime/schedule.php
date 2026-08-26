@@ -81,21 +81,27 @@ async function fetchSchedule(date) {
         const tzOffset = new Date().getTimezoneOffset();
         const response = await fetch(`${API_BASE_URL}/schedule?date=${date}&tzOffset=${tzOffset}`);
         const data = await response.json();
-        const scheduleItems = data.results;
+        const scheduleItems = Array.isArray(data?.results) ? data.results : [];
         
         const container = document.getElementById('schedule-items');
         container.innerHTML = '';
+
+        if (!scheduleItems.length) {
+            container.innerHTML = '<li><div class="film-detail"><h3 class="film-name">No scheduled titles for this day.</h3></div></li>';
+            document.getElementById('scl-more').style.display = 'none';
+            return;
+        }
         
         scheduleItems.forEach(item => {
             container.innerHTML += `
                 <li>
                     <a href="/details/${item.id}" class="tsl-link">
-                        <div class="time">${item.time}</div>
+                        <div class="time">${item.time || 'TBA'}</div>
                         <div class="film-detail">
-                            <h3 class="film-name dynamic-name" data-jname="${item.jname}">${item.title}</h3>
+                            <h3 class="film-name dynamic-name" data-jname="${item.jname || ''}">${item.title || 'Unknown'}</h3>
                             <div class="fd-play">
                                 <button type="button" class="btn btn-sm btn-play">
-                                    <i class="fas fa-play mr-2"></i>Episode ${item.episode_no}
+                                    <i class="fas fa-play mr-2"></i>Episode ${item.episode_no ?? '?'}
                                 </button>
                             </div>
                         </div>
@@ -111,6 +117,10 @@ async function fetchSchedule(date) {
         }
     } catch (error) {
         console.error('Error fetching schedule:', error);
+        const container = document.getElementById('schedule-items');
+        if (container) {
+            container.innerHTML = '<li><div class="film-detail"><h3 class="film-name">Could not load schedule.</h3></div></li>';
+        }
     }
 }
 

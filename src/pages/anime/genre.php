@@ -1,61 +1,23 @@
 <?php
 
-// error_reporting(E_ALL);
-// ini_set('display_errors', 1);
-
 require_once($_SERVER['DOCUMENT_ROOT'] . '/_config.php');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
 session_start();
-
-function fetchApi($url) {
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-    $response = curl_exec($ch);
-    curl_close($ch);
-    return $response;
-}
 
 $category = basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 $page = max(1, (int)($_GET['page'] ?? 1));
 $currentPage = $page;
 
-$cacheFile = $_SERVER['DOCUMENT_ROOT'] . "/cache/category/anime_{$category}_page_{$page}.json";
-$cacheDuration = 3600;
-$cacheDir = dirname($cacheFile);
-if (!file_exists($cacheDir)) {
-    mkdir($cacheDir, 0755, true);
+if (!empty($_GET['slug'])) {
+    $category = $_GET['slug'];
 }
 
-$response = false;
-$data = [];
-
-if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheDuration) {
-    $response = file_get_contents($cacheFile);
-} 
-if (!$response) {
-    $apiUrl = "$zpi/genre/{$category}?page={$page}";
-    $response = fetchApi($apiUrl);
-    
-    if ($response !== false) {
-        $tempData = json_decode($response, true);
-        if (json_last_error() === JSON_ERROR_NONE && isset($tempData['success']) && $tempData['success']) {
-            file_put_contents($cacheFile, $response);
-        } else {
-            $errorMessage = "Invalid API response";
-            $response = json_encode(['success' => false, 'error' => $errorMessage]);
-        }
-    } else {
-        $errorMessage = "Failed to fetch data from API";
-        $response = json_encode(['success' => false, 'error' => $errorMessage]);
-    }
-}
-
-$data = json_decode($response, true);
+$data = jikan_genre($category, $page);
 
 $errorMessage = null;
 $aniResults = $data['results']['data'] ?? null;
-$totalPages = $data['results']['totalPages'] ?? 1;
-$totalResults = $totalPages * 20;
+$totalPages = $data['results']['totalPages'] ?? ($data['results']['totalPage'] ?? 1);
+$totalResults = $data['results']['total'] ?? ($totalPages * 20);
 if (empty($aniResults)) {
     $errorMessage = "No anime data found";
 }

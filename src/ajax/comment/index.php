@@ -93,7 +93,7 @@ try {
                 echo json_encode(['status' => false, 'msg' => 'Missing anime ID']);
                 break;
             }
-            $avatar = !empty($currentUser['image']) ? $currentUser['image'] : '/files/images/default_avatar.png';
+            $avatar = !empty($currentUser['image']) ? $currentUser['image'] : '/public/images/no-avatar.jpeg';
             $system = new CommentSystem($conn, $episodeId, $animeId);
             $result = $system->addComment(
                 $content,

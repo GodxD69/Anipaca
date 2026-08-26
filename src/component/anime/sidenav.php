@@ -1,13 +1,14 @@
 <?php
+require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
+$data = jikan_top_ten();
 
-$apiUrl = $zpi . "/top-ten";
-$response = file_get_contents($apiUrl);
-$data = json_decode($response, true);
-
-if ($data['success']) {
-    $todayResults = $data['results']['today'];
-    $weekResults = $data['results']['week'];
-    $monthResults = $data['results']['month'];
+$todayResults = [];
+$weekResults = [];
+$monthResults = [];
+if (!empty($data['success'])) {
+    $todayResults = $data['results']['today'] ?? [];
+    $weekResults = $data['results']['week'] ?? [];
+    $monthResults = $data['results']['month'] ?? [];
 }
 ?>
 
@@ -92,7 +93,7 @@ if ($data['success']) {
                 <div class="tab-content">
                     <div id="top-viewed-day" class="anif-block-ul anif-block-chart tab-pane active">
                         <ul class="ulclear">
-                            <?php foreach ($data['results']['today'] as $anime): ?>
+                            <?php foreach ($todayResults as $anime): ?>
                             <li class="<?php echo $anime['number'] <= 3 ? 'item-top' : ''; ?>">
                                 <div class="film-number"><span><?php echo $anime['number']; ?></span></div>
                                 <div class="film-poster item-qtip" data-id="<?php echo $anime['id']; ?>">
@@ -124,6 +125,9 @@ if ($data['success']) {
                                             <?php endif; ?>
                                         </div>
                                     </div>
+                                </div>
+                                <div class="film-fav wl-item" data-movieid="<?php echo htmlspecialchars($anime['id']); ?>" data-type="3" data-page="detail" data-animename="<?php echo htmlspecialchars($anime['title']); ?>" data-poster="<?php echo htmlspecialchars($anime['poster']); ?>">
+                                    <i class="fas fa-plus"></i>
                                 </div>
                                 <div class="clearfix"></div>
                             </li>
@@ -132,7 +136,7 @@ if ($data['success']) {
                     </div>
                     <div id="top-viewed-week" class="anif-block-ul anif-block-chart tab-pane">
                         <ul class="ulclear">
-                            <?php foreach ($data['results']['week'] as $anime): ?>
+                            <?php foreach ($weekResults as $anime): ?>
                             <li class="<?php echo $anime['number'] <= 3 ? 'item-top' : ''; ?>">
                                 <div class="film-number"><span><?php echo $anime['number']; ?></span></div>
                                 <div class="film-poster item-qtip" data-id="<?php echo $anime['id']; ?>">
@@ -164,6 +168,9 @@ if ($data['success']) {
                                             <?php endif; ?>
                                         </div>
                                     </div>
+                                </div>
+                                <div class="film-fav wl-item" data-movieid="<?php echo htmlspecialchars($anime['id']); ?>" data-type="3" data-page="detail" data-animename="<?php echo htmlspecialchars($anime['title']); ?>" data-poster="<?php echo htmlspecialchars($anime['poster']); ?>">
+                                    <i class="fas fa-plus"></i>
                                 </div>
                                 <div class="clearfix"></div>
                             </li>
@@ -172,7 +179,7 @@ if ($data['success']) {
                     </div>
                     <div id="top-viewed-month" class="anif-block-ul anif-block-chart tab-pane">
                         <ul class="ulclear">
-                            <?php foreach ($data['results']['month'] as $anime): ?>
+                            <?php foreach ($monthResults as $anime): ?>
                             <li class="<?php echo $anime['number'] <= 3 ? 'item-top' : ''; ?>">
                                 <div class="film-number"><span><?php echo $anime['number']; ?></span></div>
                                 <div class="film-poster item-qtip" data-id="<?php echo $anime['id']; ?>">
@@ -204,6 +211,9 @@ if ($data['success']) {
                                             <?php endif; ?>
                                         </div>
                                     </div>
+                                </div>
+                                <div class="film-fav wl-item" data-movieid="<?php echo htmlspecialchars($anime['id']); ?>" data-type="3" data-page="detail" data-animename="<?php echo htmlspecialchars($anime['title']); ?>" data-poster="<?php echo htmlspecialchars($anime['poster']); ?>">
+                                    <i class="fas fa-plus"></i>
                                 </div>
                                 <div class="clearfix"></div>
                             </li>

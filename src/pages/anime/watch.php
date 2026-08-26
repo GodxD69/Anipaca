@@ -2,24 +2,25 @@
 
 require_once('src/component/anime/qtip.php');
 require_once($_SERVER['DOCUMENT_ROOT'] . '/_config.php');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
 
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 
 $urlPath = $_SERVER['REQUEST_URI'];
 
-$streaming = ltrim($urlPath, '/watch/');
+$streaming = ltrim(parse_url($urlPath, PHP_URL_PATH) ?? '', '/');
+$streaming = preg_replace('#^watch/#', '', $streaming);
 
 $parts = explode('?', $streaming);
-$animeId = $parts[0];
+$animeId = $_GET['slug'] ?? ($parts[0] ?? '');
+$animeId = preg_replace('/[^0-9]/', '', (string)$animeId);
 
 parse_str($parts[1] ?? '', $queryParams);
 $episodeId = $queryParams['ep'] ?? null;
-$animeData = fetchAnimeData($animeId);
+$animeData = $animeId !== '' ? fetchAnimeData($animeId) : false;
 
-$episodelistUrl = "$zpi/episodes/$animeId";
-$episodelistResponse = file_get_contents($episodelistUrl);
-$episodelistData = json_decode($episodelistResponse, true);
+$episodelistData = jikan_episodes($animeId);
 
 $episodelist = [];
 
@@ -40,6 +41,15 @@ $totalEpisodes = count($episodelist);
 if (!$animeData) {
     echo "Anime data not found.";
     exit;
+}
+
+if ($totalEpisodes > 0) {
+    $animeData['subEp'] = max((int)($animeData['subEp'] ?? 0), $totalEpisodes);
+} elseif (empty($animeData['subEp']) || $animeData['subEp'] === '?' || (int)$animeData['subEp'] <= 0) {
+    $resolved = jikan_episode_total($animeId);
+    if ($resolved > 0) {
+        $animeData['subEp'] = $resolved;
+    }
 }
 
 $parts = parse_url($_SERVER['REQUEST_URI']);
@@ -212,7 +222,7 @@ $totalVotes = $like_count + $dislike_count;
     <div id="wrapper" data-page="movie_watch">
         <?php include('src/component/header.php'); ?>
         <div class="clearfix"></div>
-        <div id="main-wrapper" class="layout-page layout-page-detail layout-page-watchtv">
+        <div id="main-wrapper" class="layout-page layout-page-detail layout-page-watchtv" data-id="<?= htmlspecialchars((string)($animeData['id'] ?? $animeId ?? '')) ?>">
             <div id="ani_detail">
                 <div class="ani_detail-stage">
                     <div class="container">
@@ -616,13 +626,14 @@ $totalVotes = $like_count + $dislike_count;
                                                 </div>
                                                 <div class="tick-item tick-sub">
                                                     <i class="fas fa-closed-captioning mr-1"></i>
-                                                    <?= htmlspecialchars($animeData['subEp']) ?>
+                                                    <?= htmlspecialchars((string)($animeData['subEp'] ?? $totalEpisodes ?: '?')) ?>
                                                 </div>
+                                                <?php if (!empty($animeData['dubEp'])): ?>
                                                 <div class="tick-item tick-dub">
                                                     <i class="fas fa-microphone mr-1"></i>
-                                                    <?= htmlspecialchars($animeData['dubEp']) ?>
+                                                    <?= htmlspecialchars((string)$animeData['dubEp']) ?>
                                                 </div>
-
+                                                <?php endif; ?>
                                                 <div class="tac tick-item tick-eps">
                                                     <?php
                                                     $query = mysqli_query($conn, "SELECT totalview FROM `pageview` WHERE pageID = '$pageID'");
@@ -778,33 +789,25 @@ $totalVotes = $like_count + $dislike_count;
                     <?php endif; ?>
 
                     <section class="block_area block_area-comment" id="comment-block">
-                        <?php
-                        $animeId = $animeData['id'];
-                        $episodeId = isset($_GET['ep']) ? $_GET['ep'] : '1';
-                        $user_id = $_COOKIE['userID'] ?? null;
-                        $user = null;
-
-                        if ($user_id) {
-                            $stmt = $conn->prepare("SELECT username, image FROM users WHERE id = ?");
-                            if ($stmt === false) {
-                                die("Database prepare failed: " . mysqli_error($conn));
-                            }
-                            $stmt->bind_param("i", $user_id);
-                            $stmt->execute();
-                            $user = $stmt->get_result()->fetch_assoc();
-                        }
-                        $commentData = [
-                            'episode_id' => $episodeId,
-                            'anime_id' => $animeId,
-                            'user_profile' => [
-                                'user_id' => $user_id,
-                                'username' => $user['username'] ?? '',
-                                'avatar_url' => !empty($user['image']) ? $user['image'] : '',
-                            ]
-                        ];
-
-                        include('src/component/comment.php');
-                        ?>
+                        <div class="block_area-header justify-content-start">
+                            <div class="bah-heading mr-4">
+                                <h2 class="cat-heading">Comments</h2>
+                            </div>
+                            <a class="guidelines" href="/news/rules-our-code-of-conduct-1">
+                                Community Guidelines <span>NEW</span>
+                            </a>
+                        </div>
+                        <div class="show-comments">
+                            <div id="content-comments" class="comments-wrap">
+                                <div class="loading-relative">
+                                    <div class="loading">
+                                        <div class="span1"></div>
+                                        <div class="span2"></div>
+                                        <div class="span3"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </section>
 
                     <section class="w-full flex items-center justify-center">
@@ -893,10 +896,15 @@ $totalVotes = $like_count + $dislike_count;
             src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.bundle.min.js"></script>
         <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/js-cookie@rc/dist/js.cookie.min.js"></script>
         <script type="text/javascript" src="<?= $websiteUrl ?>/src/assets/js/comman.js"></script>
-        <script type="text/javascript" src="<?= $websiteUrl ?>/src/assets/js/comment.js"></script>
+        <script>
+            var movieId = <?= json_encode((string)($animeData['id'] ?? $animeId ?? '')) ?>;
+            var epId = <?= json_encode((string)($_GET['ep'] ?? '1')) ?>;
+            var isLoggedIn = <?= isset($_COOKIE['userID']) && $_COOKIE['userID'] ? 'true' : 'false' ?>;
+            var page = 'watch';
+        </script>
+        <script type="text/javascript" src="<?= $websiteUrl ?>/src/assets/js/comment.js?v=<?= $version ?>"></script>
         <link rel="stylesheet" href="<?= $websiteUrl ?>/src/assets/css/jquery-ui.css">
         <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
-        0
         <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
         <script type="text/javascript" src="<?= $websiteUrl ?>/src/assets/js/function.js"></script>
@@ -906,10 +914,12 @@ $totalVotes = $like_count + $dislike_count;
         <script>
             $(document).ready(function () {
                 const $iframe = $("#iframe-embed");
-                let currentServerType = localStorage.getItem('preferredServerType') || 'dub';
-                let currentServerName = localStorage.getItem('preferredServerName') || '';
+                let currentServerType = localStorage.getItem('preferredServerType') || 'sub';
+                let currentServerName = localStorage.getItem('preferredServerName') || 'Kari';
                 let currentEpisodeId = '<?= htmlspecialchars($streaming) ?>';
-                let animeId = '<?= htmlspecialchars($animeData['id']) ?>';
+                let animeId = '<?= htmlspecialchars($animeData['id'] ?? $animeId) ?>';
+                let anilistId = '<?= htmlspecialchars((string)($animeData['anilistId'] ?? '')) ?>';
+                let malId = '<?= htmlspecialchars((string)($animeData['id'] ?? $animeId)) ?>';
                 let autoNextEnabled = true;
                 let autoSkipEnabled = true;
 
@@ -992,64 +1002,42 @@ $totalVotes = $like_count + $dislike_count;
                     if (!servers) return;
                     const $subList = $('.ps_-block-sub .ps__-list');
                     const $dubList = $('.ps_-block-dub .ps__-list');
-                    currentServerType = localStorage.getItem('preferredServerType') || 'dub';
-                    currentServerName = localStorage.getItem('preferredServerName') || '';
-                    const preferredServerId = localStorage.getItem('preferredServerId');
-                    const preferredServerType = localStorage.getItem('preferredServerType');
+                    currentServerType = localStorage.getItem('preferredServerType') || 'sub';
+                    currentServerName = localStorage.getItem('preferredServerName') || 'Kari';
+                    const preferredServerId = localStorage.getItem('preferredServerId') || 'kari';
+                    const preferredServerType = localStorage.getItem('preferredServerType') || 'sub';
                     let preferredServerFound = false;
 
-                    if (servers.sub?.length) {
-                        $subList.html(servers.sub.map((server, index) => {
-                            const isActive = preferredServerId === server.serverId && preferredServerType === 'sub';
+                    function renderServerButtons(list, type) {
+                        if (!list?.length) {
+                            return '<div class="item">No servers available</div>';
+                        }
+                        return list.map((server) => {
+                            const isActive = preferredServerId === server.serverId && preferredServerType === type;
                             if (isActive) preferredServerFound = true;
-                            const fastIcon = server.serverName.toLowerCase() === 'fast' ? '<i class="fa-solid fa-circle-radiation"></i>' : '';
-                            return `
-                    <div class="item">
-                        <button class="btn btn-server ${isActive ? 'active' : ''}" 
-                            data-episode-id="${episodeId}"
-                            data-server-id="${server.serverId}"
-                            data-server-type="sub"
-                            data-server-name="${server.serverName}">
-                            ${server.serverName} ${fastIcon}
-                        </button>
-                    </div>
-                `;
-                        }).join(''));
-                    } else {
-                        $subList.html('<div class="item">Please select an episode</div>');
-                    }
-
-                    if (servers.dub?.length) {
-                        $dubList.html(servers.dub.map((server, index) => {
-                            const isActive = preferredServerId === server.serverId && preferredServerType === 'dub';
-                            if (isActive) preferredServerFound = true;
-                            const fastIcon = server.serverName.toLowerCase() === 'fast' ? '<i class="fa-solid fa-circle-radiation"></i>' : '';
                             return `
                     <div class="item">
                         <button class="btn btn-server ${isActive ? 'active' : ''}"
                             data-episode-id="${episodeId}"
                             data-server-id="${server.serverId}"
-                            data-server-type="dub"
+                            data-server-type="${type}"
                             data-server-name="${server.serverName}">
-                            ${server.serverName} ${fastIcon}
+                            ${server.serverName}
                         </button>
-                    </div>
-                `;
-                        }).join(''));
-                    } else {
-                        $dubList.html('<div class="item">No DUB servers available</div>');
+                    </div>`;
+                        }).join('');
                     }
+
+                    $subList.html(renderServerButtons(servers.sub, 'sub'));
+                    $dubList.html(renderServerButtons(servers.dub, 'dub'));
                     attachServerListeners();
                     $('#servers-loading').hide();
-                        $('#servers-mixed').show();
+                    $('#servers-mixed').show();
 
-                    // Try to select preferred server
                     let foundPreferred = $(`.btn-server[data-server-type="${currentServerType}"][data-server-name="${currentServerName}"]`);
                     if (foundPreferred.length) {
                         foundPreferred.first().click();
-                        console.log(`Preferred server found and selected: type=${currentServerType}, name=${currentServerName}`);
                     } else {
-
                         if (!preferredServerFound || !$('.btn-server.active').length) {
                             const $firstServer = $('.btn-server').first();
                             if ($firstServer.length) {
@@ -1059,15 +1047,19 @@ $totalVotes = $like_count + $dislike_count;
                                 localStorage.setItem('preferredServerName', $firstServer.data('server-name'));
                             }
                         }
-
                         const $activeServer = $('.btn-server.active').first();
                         if ($activeServer.length) {
                             setTimeout(() => $activeServer.click(), 100);
                         }
-
                         attachServerListeners();
-                        
                     }
+                }
+
+                function buildVidHawkPlayerUrl(serverType, serverName, episodeNumber) {
+                    const serverSlug = String(serverName || 'kari').toLowerCase();
+                    const audio = (serverType === 'dub') ? 'dub' : 'sub';
+                    const ep = encodeURIComponent(episodeNumber || '1');
+                    return `<?= $websiteUrl ?>/src/player/${audio}.php?mal=${encodeURIComponent(malId)}&anilist=${encodeURIComponent(anilistId)}&server=${encodeURIComponent(serverSlug)}&embed=true&ep=${ep}`;
                 }
 
                 function attachServerListeners() {
@@ -1078,9 +1070,8 @@ $totalVotes = $like_count + $dislike_count;
                         const serverId = $(this).data("server-id");
                         const serverType = $(this).data("server-type");
                         const serverName = $(this).data("server-name");
-                        const episodeId = $(this).data("episode-id");
                         const urlParams = new URLSearchParams(window.location.search);
-                        const episodeNumber = urlParams.get('ep');
+                        const episodeNumber = urlParams.get('ep') || '1';
 
                         currentServerType = serverType;
                         currentServerName = serverName;
@@ -1088,21 +1079,16 @@ $totalVotes = $like_count + $dislike_count;
                         localStorage.setItem('preferredServerType', serverType);
                         localStorage.setItem('preferredServerName', serverName);
 
-                        const skipParam = autoSkipEnabled ? "&skip=true" : "&skip=false";
-                        const encodedId = encodeURIComponent(currentEpisodeId); // ✅ properly encode the ID
-                        const playerUrl = `<?= $websiteUrl ?>/src/player/${currentServerType}.php?id=${encodedId}&server=${currentServerName}&embed=true&ep=${episodeNumber}${skipParam}`;
-
+                        const playerUrl = buildVidHawkPlayerUrl(serverType, serverName, episodeNumber);
                         console.log('Setting player URL:', playerUrl);
                         setTimeout(() => $iframe.attr('src', playerUrl), 100);
 
                         updateWatchHistory({
-                            episodeNumber: parseInt(episodeNumber)
+                            episodeNumber: parseInt(episodeNumber, 10)
                         });
 
                         $(".pc-autoskip").off("click").on("click", function () {
-                            const reloadUrl = `<?= $websiteUrl ?>/src/player/${currentServerType}.php?id=${encodedId}&server=${currentServerName}&embed=true&ep=${episodeNumber}${skipParam}`;
-                            console.log('Reloading player URL:', reloadUrl);
-                            $iframe.attr('src', reloadUrl);
+                            $iframe.attr('src', buildVidHawkPlayerUrl(currentServerType, currentServerName, episodeNumber));
                         });
                     });
                 }
@@ -1143,6 +1129,10 @@ $totalVotes = $like_count + $dislike_count;
 
                         const newUrl = `/watch/${animeId}?ep=${episodeNumber}`;
                         history.pushState({}, '', newUrl);
+                        window.epId = String(episodeNumber);
+                        if (typeof getCommentWidgetMovie === 'function') {
+                            getCommentWidgetMovie('episode', true);
+                        }
 
                         const $serverNotice = $(".server-notice strong");
                         if ($serverNotice.length) {

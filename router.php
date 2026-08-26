@@ -21,7 +21,7 @@ $routes = [
   '/^home$/' => 'home.php',
   '/^filter$/' => 'filter.php',
   '/^search$/' => 'search.php',
-  '/^az-list(?:\/[a-zA-Z0-9-]+)?$/' => 'src/pages/anime/az-list.php',
+  '/^az-list(?:\/([a-zA-Z0-9-]+))?$/' => 'src/pages/anime/az-list.php',
   '/^db$/' => 'db-init.php',
 
   // Anime Pages
@@ -31,6 +31,7 @@ $routes = [
   '/^details\/([a-zA-Z0-9\-]+)$/' => 'src/pages/anime/details.php',
   '/^anime\/([a-zA-Z0-9\-]+)$/' => 'src/pages/anime/anime.php',
   '/^watch\/([a-zA-Z0-9\-]+)$/' => 'src/pages/anime/watch.php',
+  '/^ajax\/comment(?:\/(.*))?$/' => 'src/ajax/comment/index.php',
   '/^genre\/([a-zA-Z0-9\-]+)$/' => 'src/pages/anime/genre.php',
   '/^producer\/([a-zA-Z0-9\-\.]+)\/?$/' => 'src/pages/anime/producer.php',
   '/^actors\/([a-zA-Z0-9\-]+)$/' => 'src/pages/anime/actors.php',

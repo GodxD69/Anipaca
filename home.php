@@ -1,32 +1,16 @@
 <?php
 session_start();
 require_once($_SERVER['DOCUMENT_ROOT'] . '/_config.php');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
 
+$payload = jikan_home();
 
-
-define('BASE_API_URL', $zpi);
-$endpoint = '';
-$apiUrl = BASE_API_URL . $endpoint;
-
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $apiUrl);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-$response = curl_exec($ch);
-
-if (curl_errno($ch)) {
-    echo 'Curl error: ' . curl_error($ch);
-    exit;
-}
-curl_close($ch);
-
-$data = json_decode($response, true);
-
-if (!$data || !$data['success']) {
+if (!$payload || empty($payload['success'])) {
     echo "Muhehehe! API request failed and no cache available.";
     exit;
 }
 
-$data = $data['results'];
+$data = $payload['results'];
 ?>
 <!DOCTYPE html>
 <html prefix="og: http://ogp.me/ns#" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">

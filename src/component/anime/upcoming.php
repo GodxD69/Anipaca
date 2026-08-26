@@ -13,9 +13,8 @@
         <div class="block_area-content block_area-list film_list film_list-grid film_list-wfeature ">
             <div class="film_list-wrap">
                 <?php
-                // Fetch JSON data
-                $json = file_get_contents("$zpi/top-upcoming");
-                $json = json_decode($json, true);
+                require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
+                $json = jikan_category_list('top-upcoming');
 
                 // Check if 'results' and 'data' exist
                 if (isset($json['results']['data']) && is_array($json['results']['data'])) {
