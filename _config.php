@@ -13,8 +13,10 @@ if ($conn->connect_error) {
 }
 
 $websiteTitle = "AniPaca";
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
-$host = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? 'localhost:8000');
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || 
+            (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') 
+            ? "https" : "http";
+$host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? ($_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? 'localhost:8000'));
 $websiteUrl = "{$protocol}://{$host}";
 $websiteLogo = $websiteUrl . "/public/logo/logo.png";
 $contactEmail = "raisulentertainment@gmail.com";

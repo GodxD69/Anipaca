@@ -5,16 +5,48 @@ if (empty($_SERVER['DOCUMENT_ROOT'])) {
 }
 require_once __DIR__ . '/_config.php';
 
-// Serve static files directly if they exist in built-in server
 $rawUri = $_SERVER['REQUEST_URI'] ?? '/';
 $uriPath = urldecode(parse_url($rawUri, PHP_URL_PATH) ?? '/');
 $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/\\');
 $requestedFile = $docRoot . '/' . ltrim($uriPath, '/\\');
 
+// Fallback path if document root differs from __DIR__
+if (!file_exists($requestedFile)) {
+    $requestedFile = __DIR__ . '/' . ltrim($uriPath, '/\\');
+}
+
+// Serve static assets with correct MIME types and long-lived caching
 if ($uriPath !== '/' && $uriPath !== '' && file_exists($requestedFile) && !is_dir($requestedFile)) {
-    // If it's not a php file, return false to serve it statically
     if (!preg_match('/\.php$/i', $requestedFile)) {
-        return false;
+        if (php_sapi_name() === 'cli-server') {
+            return false;
+        }
+        $ext = strtolower(pathinfo($requestedFile, PATHINFO_EXTENSION));
+        $mimes = [
+            'css'   => 'text/css; charset=utf-8',
+            'js'    => 'application/javascript; charset=utf-8',
+            'json'  => 'application/json; charset=utf-8',
+            'png'   => 'image/png',
+            'jpg'   => 'image/jpeg',
+            'jpeg'  => 'image/jpeg',
+            'gif'   => 'image/gif',
+            'webp'  => 'image/webp',
+            'svg'   => 'image/svg+xml',
+            'ico'   => 'image/x-icon',
+            'woff'  => 'font/woff',
+            'woff2' => 'font/woff2',
+            'ttf'   => 'font/ttf',
+            'eot'   => 'application/vnd.ms-fontobject',
+            'xml'   => 'application/xml',
+            'txt'   => 'text/plain',
+        ];
+        $contentType = $mimes[$ext] ?? 'application/octet-stream';
+        header('Content-Type: ' . $contentType);
+        header('Cache-Control: public, max-age=31536000');
+        header('Access-Control-Allow-Origin: *');
+        header('Content-Length: ' . filesize($requestedFile));
+        readfile($requestedFile);
+        exit;
     }
 }
 
@@ -84,12 +116,10 @@ $handled = false;
 
 foreach ($routes as $pattern => $file) {
     if (preg_match($pattern, $uri, $matches)) {
-        // Handle dynamic placeholders in target file e.g. $1
         if (strpos($file, '$1') !== false && !empty($matches[1])) {
             $file = str_replace('$1', $matches[1], $file);
         }
         
-        // Pass captured groups as GET parameters
         if (!empty($matches[1])) {
             $_GET['slug'] = $matches[1];
             $_GET['__path'] = $matches[1];
