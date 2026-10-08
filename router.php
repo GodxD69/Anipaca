@@ -5,7 +5,12 @@ if (empty($_SERVER['DOCUMENT_ROOT'])) {
 }
 require_once __DIR__ . '/_config.php';
 
-$rawUri = $_SERVER['REQUEST_URI'] ?? '/';
+$routeParam = $_GET['__route__'] ?? null;
+if ($routeParam !== null) {
+    $rawUri = '/' . ltrim($routeParam, '/');
+} else {
+    $rawUri = $_SERVER['REQUEST_URI'] ?? '/';
+}
 $uriPath = urldecode(parse_url($rawUri, PHP_URL_PATH) ?? '/');
 $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/\\');
 $requestedFile = $docRoot . '/' . ltrim($uriPath, '/\\');
