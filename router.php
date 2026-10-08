@@ -1,4 +1,17 @@
 <?php
+if (isset($_GET['debug_check']) || (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], 'debug') !== false)) {
+    header('Content-Type: application/json');
+    echo json_encode([
+        'SERVER' => $_SERVER,
+        'GET' => $_GET,
+        'DIR' => __DIR__,
+        'DOC_ROOT' => $_SERVER['DOCUMENT_ROOT'] ?? '',
+        'scandir_root' => scandir(__DIR__),
+        'styles_css_exists' => file_exists(__DIR__ . '/src/assets/css/styles.min.css'),
+    ], JSON_PRETTY_PRINT);
+    exit;
+}
+
 // Include the global configuration file
 if (empty($_SERVER['DOCUMENT_ROOT'])) {
     $_SERVER['DOCUMENT_ROOT'] = __DIR__;
