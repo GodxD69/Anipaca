@@ -1,17 +1,4 @@
 <?php
-if (isset($_GET['debug_check']) || (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], 'debug') !== false)) {
-    header('Content-Type: application/json');
-    echo json_encode([
-        'SERVER' => $_SERVER,
-        'GET' => $_GET,
-        'DIR' => __DIR__,
-        'DOC_ROOT' => $_SERVER['DOCUMENT_ROOT'] ?? '',
-        'scandir_root' => scandir(__DIR__),
-        'styles_css_exists' => file_exists(__DIR__ . '/src/assets/css/styles.min.css'),
-    ], JSON_PRETTY_PRINT);
-    exit;
-}
-
 // Include the global configuration file
 if (empty($_SERVER['DOCUMENT_ROOT'])) {
     $_SERVER['DOCUMENT_ROOT'] = __DIR__;
@@ -69,21 +56,6 @@ if ($uriPath !== '/' && $uriPath !== '' && file_exists($requestedFile) && !is_di
 
 // Get the URI without query strings and leading/trailing slashes
 $uri = trim($uriPath, '/');
-
-if ($uri === 'debug-env') {
-    header('Content-Type: application/json');
-    echo json_encode([
-        '__DIR__' => __DIR__,
-        'cwd' => getcwd(),
-        'DOCUMENT_ROOT' => $_SERVER['DOCUMENT_ROOT'] ?? null,
-        'REQUEST_URI' => $_SERVER['REQUEST_URI'] ?? null,
-        'files_in_root' => scandir(__DIR__),
-        'files_in_src' => is_dir(__DIR__ . '/src') ? scandir(__DIR__ . '/src') : 'no src dir',
-        'files_in_assets' => is_dir(__DIR__ . '/src/assets') ? scandir(__DIR__ . '/src/assets') : 'no assets dir',
-        'styles_exists' => file_exists(__DIR__ . '/src/assets/css/styles.min.css'),
-    ], JSON_PRETTY_PRINT);
-    exit;
-}
 
 // Define routes with regex patterns and associated files
 $routes = [

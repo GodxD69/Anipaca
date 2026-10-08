@@ -1,7 +1,21 @@
 {
   "version": 2,
   "functions": {
-    "api/index.php": {
+    "index.php": {
+      "runtime": "vercel-php@0.7.3",
+      "includeFiles": [
+        "src/**",
+        "public/**",
+        "files/**",
+        "_config.php",
+        "router.php",
+        "home.php",
+        "search.php",
+        "filter.php",
+        "404.php"
+      ]
+    },
+    "api/**/*.php": {
       "runtime": "vercel-php@0.7.3",
       "includeFiles": [
         "src/**",
@@ -19,7 +33,7 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/api/index.php?__route__=$1"
+      "dest": "/index.php?__route__=$1"
     }
   ]
 }
