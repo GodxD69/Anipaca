@@ -1,44 +1,34 @@
 <?php
 
-//error_reporting(E_ALL);
-//ini_set('display_errors', 1);
-
 require '_config.php';
-session_start();
+require_once __DIR__ . '/src/api/jikan_client.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-
-$keyword = isset($_GET['keyword']) ? urlencode($_GET['keyword']) : '';
+$rawKeyword = trim((string)($_GET['keyword'] ?? ''));
+$keyword = urlencode($rawKeyword);
 $page = max(1, (int)($_GET['page'] ?? 1));
 $currentPage = $page;
+$searchResults = [];
+$errorMessage = null;
+$totalPages = 1;
+$totalResults = 0;
 
-$query = isset($_GET['keyword']) ? $_GET['keyword'] : '';
-$query = isset($_GET['keyword']) ? str_replace(' ', '-', $_GET['keyword']) : '';
-
-
-
-if ($query) {
-
-    $apiUrl = "$zpi/search?keyword={$query}&page={$page}";
-
+if ($rawKeyword !== '') {
     try {
-        $response = file_get_contents($apiUrl);
-        if ($response !== false) {
-            $data = json_decode($response, true);
-            if ($data && isset($data['success']) && $data['success'] && isset($data['results']['data'])) {
-                $searchResults = $data['results']['data'];
-            } else {
-                $errorMessage = 'Failed to fetch search results. Please try again later.';
-            }
+        $data = jikan_search($rawKeyword, $page);
+        if ($data && !empty($data['success']) && isset($data['results']['data'])) {
+            $searchResults = $data['results']['data'];
+            $totalPages = max(1, (int)($data['results']['totalPage'] ?? 1));
+            $totalResults = (int)($data['results']['total'] ?? ($totalPages * 20));
         } else {
-            $errorMessage = 'Could not connect to the API.';
+            $errorMessage = 'Failed to fetch search results. Please try again later.';
         }
     } catch (Exception $e) {
         $errorMessage = 'An error occurred: ' . $e->getMessage();
     }
-    $totalPages = $data['results']['totalPage'] ?? 1;
-    $totalResults = $totalPages * 20;
 }
-
 ?>
 <!DOCTYPE html>
 <html prefix="og: http://ogp.me/ns#" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">

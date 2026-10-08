@@ -111,12 +111,16 @@ $data = $payload['results'];
                     <?php if (isset($_COOKIE['userID'])) {
                         $user_id = $_COOKIE['userID'];
                         $sql = "SELECT * FROM watch_history WHERE user_id = ? GROUP BY anime_id, episode_number  ORDER BY MAX(id) DESC  LIMIT 4";
-                        $stmt = mysqli_prepare($conn, $sql);
-                        mysqli_stmt_bind_param($stmt, "i", $user_id);
-                        mysqli_stmt_execute($stmt);
-                        $result = mysqli_stmt_get_result($stmt);
+                        $stmt = $conn->prepare($sql);
+                        if ($stmt) {
+                            $stmt->bind_param("i", $user_id);
+                            $stmt->execute();
+                            $result = $stmt->get_result();
+                        } else {
+                            $result = null;
+                        }
                         
-                        if ($result->num_rows > 0) { ?>
+                        if ($result && $result->num_rows > 0) { ?>
                             <section class="block_area block_area_home">
                                 <div class="block_area-header">
                                     <div class="float-left bah-heading mr-4">

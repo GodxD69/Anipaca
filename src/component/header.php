@@ -284,11 +284,18 @@
        
         <?php
         if (isset($_COOKIE['userID'])) {
-            $user_id = $_COOKIE['userID'];
-            $select = "SELECT * FROM users WHERE id = '$user_id'";
-            $result = mysqli_query($conn, $select);
-            if (mysqli_num_rows($result) > 0) {
-                $fetch = mysqli_fetch_assoc($result);
+            $user_id = (int)$_COOKIE['userID'];
+            $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+            $fetch = null;
+            if ($stmt) {
+                $stmt->bind_param("i", $user_id);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                if ($result && $result->num_rows > 0) {
+                    $fetch = $result->fetch_assoc();
+                }
+            }
+            if ($fetch) {
         ?>
                 <div id="header_right">
                     <div id="user-slot">

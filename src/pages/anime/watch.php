@@ -4,6 +4,11 @@ require_once('src/component/anime/qtip.php');
 require_once($_SERVER['DOCUMENT_ROOT'] . '/_config.php');
 require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
 
+global $conn;
+if (!isset($conn) || !$conn) {
+    $conn = $GLOBALS['conn'] ?? new AnipacaDatabase();
+}
+
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 
@@ -63,30 +68,24 @@ if (!isset($_SESSION['viewed_pages'])) {
 }
 $counter = 0;
 if (!in_array($pageID, $_SESSION['viewed_pages'])) {
-    $query = mysqli_query($conn, "SELECT * FROM `pageview` WHERE pageID = '$pageID'");
-    if (!$query) {
-        echo "Database query failed: " . mysqli_error($conn);
-        exit;
-    }
-    $rows = mysqli_fetch_array($query);
+    $escapedPageID = $conn->real_escape_string($pageID);
+    $query = $conn->query("SELECT * FROM `pageview` WHERE pageID = '$escapedPageID'");
+    $rows = $query ? $query->fetch_assoc() : null;
     $counter = $rows['totalview'] ?? 0;
     $id = $rows['id'] ?? null;
     if ($counter === 0) {
         $counter = 1;
-        $insertQuery = mysqli_query($conn, "INSERT INTO `pageview` (pageID, totalview, like_count, dislike_count, animeID) VALUES('$pageID', '$counter', '1', '0', '$animeId')");
-        if (!$insertQuery) {
-            echo "Failed to insert pageview count: " . mysqli_error($conn);
-            exit;
-        }
+        $escapedAnimeId = $conn->real_escape_string($animeId);
+        $conn->query("INSERT INTO `pageview` (pageID, totalview, like_count, dislike_count, animeID) VALUES('$escapedPageID', '$counter', '1', '0', '$escapedAnimeId')");
     } else {
         $counter++;
-        $updateQuery = mysqli_query($conn, "UPDATE `pageview` SET totalview = '$counter' WHERE pageID = '$pageID'");
-        if (!$updateQuery) {
-            echo "Failed to update pageview count: " . mysqli_error($conn);
-            exit;
-        }
+        $conn->query("UPDATE `pageview` SET totalview = '$counter' WHERE pageID = '$escapedPageID'");
     }
     $_SESSION['viewed_pages'][] = $pageID;
+} else {
+    $escapedPageID = $conn->real_escape_string($pageID);
+    $query = $conn->query("SELECT * FROM `pageview` WHERE pageID = '$escapedPageID'");
+    $rows = $query ? $query->fetch_assoc() : null;
 }
 
 $like_count = $rows['like_count'] ?? 0;
@@ -636,13 +635,13 @@ $totalVotes = $like_count + $dislike_count;
                                                 <?php endif; ?>
                                                 <div class="tac tick-item tick-eps">
                                                     <?php
-                                                    $query = mysqli_query($conn, "SELECT totalview FROM `pageview` WHERE pageID = '$pageID'");
-                                                    if ($query) {
-                                                        $row = mysqli_fetch_assoc($query);
+                                                    $escapedPageID = $conn->real_escape_string($pageID);
+                                                    $query = $conn->query("SELECT totalview FROM `pageview` WHERE pageID = '$escapedPageID'");
+                                                    if ($query && ($row = $query->fetch_assoc())) {
                                                         $counter = $row['totalview'] ?? 0;
                                                         echo "VIEWS: " . $counter;
                                                     } else {
-                                                        echo "Failed to retrieve views.";
+                                                        echo "VIEWS: 1";
                                                     }
                                                     ?>
                                                 </div>

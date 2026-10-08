@@ -1,13 +1,12 @@
-# Ignore the configuration file
-_config.php
-
-# Other ignore patterns
+# Logs and caches
 *.log
 *.tmp
-/vendor/
+/cache/
+/data/*.sqlite
+/tools/
 /node_modules/
 /.DS_Store
 /.env
-/_config.php
 /.vscode/sftp.json
-_config.php
+
+.vercel

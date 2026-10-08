@@ -13,7 +13,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 if(isset($_POST['submit']) || isset($_POST['anilist_login'])){
-   $login = mysqli_real_escape_string($conn, $_POST['login']);
+   $login = $conn->real_escape_string($_POST['login'] ?? '');
    $password = $_POST['password'];
    $stmt = $conn->prepare("SELECT * FROM users WHERE username = ? OR email = ?");
    $stmt->bind_param("ss", $_POST['login'], $_POST['login']);

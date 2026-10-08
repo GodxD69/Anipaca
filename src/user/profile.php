@@ -24,8 +24,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
     $response = array();
 
     try {
-        $username = mysqli_real_escape_string($conn, $_POST['name']);
-        $avatar = isset($_POST['avatar_image']) ? mysqli_real_escape_string($conn, $_POST['avatar_image']) : null;
+        $username = $conn->real_escape_string($_POST['name'] ?? '');
+        $avatar = isset($_POST['avatar_image']) ? $conn->real_escape_string($_POST['avatar_image']) : null;
 
         if (empty($username)) {
             $response['status'] = 'error';
