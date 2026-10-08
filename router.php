@@ -44,8 +44,7 @@ if ($uriPath !== '/' && $uriPath !== '' && file_exists($requestedFile) && !is_di
         header('Content-Type: ' . $contentType);
         header('Cache-Control: public, max-age=31536000');
         header('Access-Control-Allow-Origin: *');
-        header('Content-Length: ' . filesize($requestedFile));
-        readfile($requestedFile);
+        echo file_get_contents($requestedFile);
         exit;
     }
 }
