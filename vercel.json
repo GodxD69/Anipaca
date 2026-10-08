@@ -2,13 +2,22 @@
   "version": 2,
   "functions": {
     "api/index.php": {
-      "runtime": "vercel-php@0.7.3"
+      "runtime": "vercel-php@0.7.3",
+      "includeFiles": "src/**,public/**,files/**,_config.php,router.php,home.php,search.php,filter.php,404.php"
     }
   },
   "routes": [
     {
-      "src": "/(.*\\.(?:css|js|png|jpg|jpeg|gif|svg|ico|ttf|woff|woff2|eot|otf|webp|avif|txt|xml|map))$",
-      "dest": "/$1"
+      "src": "/src/assets/(.*)",
+      "dest": "/src/assets/$1"
+    },
+    {
+      "src": "/public/(.*)",
+      "dest": "/public/$1"
+    },
+    {
+      "src": "/files/(.*)",
+      "dest": "/files/$1"
     },
     {
       "src": "/(.*)",
