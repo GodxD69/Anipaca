@@ -605,6 +605,24 @@ function jikan_top_ten(): array
         return $cached;
     }
 
+    $al = anilist_top_ten();
+    if (!empty($al['results']['today'])) {
+        jikan_cache_set($cacheKey, $al);
+        return $al;
+    }
+
+    $home = anilist_home();
+    if (!empty($home['results'])) {
+        $r = $home['results'];
+        $payload = jikan_ok([
+            'today' => array_slice($r['topAiring'] ?? $r['trending'] ?? [], 0, 10),
+            'week' => array_slice($r['trending'] ?? $r['mostPopular'] ?? [], 0, 10),
+            'month' => array_slice($r['mostPopular'] ?? $r['topAiring'] ?? [], 0, 10),
+        ]);
+        jikan_cache_set($cacheKey, $payload);
+        return $payload;
+    }
+
     $top = jikan_map_list(jikan_request('/top/anime', ['limit' => 10], JIKAN_CACHE_TTL, 1));
     $airing = jikan_map_list(jikan_request('/top/anime', ['filter' => 'airing', 'limit' => 10], JIKAN_CACHE_TTL, 1));
     $popular = jikan_map_list(jikan_request('/top/anime', ['filter' => 'bypopularity', 'limit' => 10], JIKAN_CACHE_TTL, 1));
@@ -648,17 +666,18 @@ function jikan_info(string $id): array
         return $cached;
     }
 
+    require_once __DIR__ . '/anilist_client.php';
+    $alPayload = anilist_info_by_mal((int)$id);
+    if (!empty($alPayload['success']) && !empty($alPayload['results']['data'])) {
+        jikan_cache_set($cacheKey, $alPayload);
+        return $alPayload;
+    }
+
     $anime = jikan_request('/anime/' . rawurlencode($id) . '/full', [], JIKAN_CACHE_TTL, 1);
     if (!$anime || empty($anime['data'])) {
         $stale = jikan_cache_get_stale($cacheKey);
         if (is_array($stale) && !empty($stale['success'])) {
             return $stale;
-        }
-        require_once __DIR__ . '/anilist_client.php';
-        $alPayload = anilist_info_by_mal((int)$id);
-        if (!empty($alPayload['success'])) {
-            jikan_cache_set($cacheKey, $alPayload);
-            return $alPayload;
         }
         return jikan_fail('Anime not found');
     }
@@ -819,37 +838,30 @@ function jikan_episodes(string $id): array
         return $cached;
     }
 
-    $total = jikan_episode_total($id);
-    $anime = jikan_request('/anime/' . rawurlencode($id), [], JIKAN_CACHE_TTL, 1);
-    $title = !empty($anime['data']) ? jikan_title($anime['data']) : 'Episode';
+    require_once __DIR__ . '/anilist_client.php';
+    $total = 0;
+    $title = 'Episode';
+
+    $m = anilist_media_by_mal((int)$id);
+    if ($m) {
+        $total = (int)($m['episodes'] ?? 0);
+        if ($total <= 0 && !empty($m['nextAiringEpisode']['episode'])) {
+            $total = (int)$m['nextAiringEpisode']['episode'] - 1;
+        }
+        $title = $m['title']['english'] ?? $m['title']['romaji'] ?? 'Episode';
+    }
+
     if ($total <= 0) {
-        $total = (int)($anime['data']['episodes'] ?? 0);
+        $total = jikan_episode_total($id);
+    }
+    if ($total <= 0) {
+        $total = 12;
     }
 
     $episodes = [];
-    $named = [];
-    // Fetch first page of titles only (rate-limit friendly)
-    $epPage = jikan_request('/anime/' . rawurlencode($id) . '/episodes', ['page' => 1], JIKAN_CACHE_TTL, 1);
-    foreach ($epPage['data'] ?? [] as $i => $row) {
-        $no = (int)($row['mal_id'] ?? ($i + 1));
-        $named[$no] = [
-            'episode_no' => $no,
-            'id' => $id . '?ep=' . $no,
-            'filler' => false,
-            'jname' => $row['title_japanese'] ?? ($row['title'] ?? ("Episode $no")),
-            'title' => $row['title'] ?? ("Episode $no"),
-        ];
-        $total = max($total, $no);
-    }
-
-    if ($total <= 0) {
-        $total = max(count($named), 12);
-    }
-
-    // Cap extreme stubs (safety) but allow long-running shows like One Piece
     $total = min($total, 2500);
     for ($i = 1; $i <= $total; $i++) {
-        $episodes[] = $named[$i] ?? [
+        $episodes[] = [
             'episode_no' => $i,
             'id' => $id . '?ep=' . $i,
             'filler' => false,
