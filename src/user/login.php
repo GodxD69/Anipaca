@@ -131,7 +131,7 @@ cssFiles.forEach(file => {
 <body data-page="page_login">
   <div id="sidebar_menu_bg"></div>
   <div id="wrapper" data-page="page_home">
-    <?php include 'src/component/header.php'; ?>
+    <?php include $_SERVER['DOCUMENT_ROOT'] . '/src/component/header.php'; ?>
     <div class="clearfix"></div>
     <div id="main-wrapper" class="layout-page layout-page-404">
       <div class="container">
@@ -172,7 +172,7 @@ cssFiles.forEach(file => {
         <div class="clearfix"></div>
       </div>
     </div>
-    <?php include 'src/component/footer.php'; ?>
+    <?php include $_SERVER['DOCUMENT_ROOT'] . '/src/component/footer.php'; ?>
     <div id="mask-overlay"></div>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.bundle.min.js"></script>

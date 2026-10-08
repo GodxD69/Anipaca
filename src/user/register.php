@@ -211,7 +211,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body data-page="page_register">
     <div id="sidebar_menu_bg"></div>
     <div id="wrapper" data-page="page_home">
-    <?php include 'src/component/header.php'; ?>
+    <?php include $_SERVER['DOCUMENT_ROOT'] . '/src/component/header.php'; ?>
         <div class="clearfix"></div>
         <div id="main-wrapper" class="layout-page layout-page-404">
             <div class="container">
@@ -268,7 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="clearfix"></div>
             </div>
         </div>
-        <?php include('src/component/footer.php')?>
+        <?php include $_SERVER['DOCUMENT_ROOT'] . '/src/component/footer.php'; ?>
         <div id="mask-overlay"></div>
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js?v=<?=$version?>"></script>
         

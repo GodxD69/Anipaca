@@ -72,7 +72,7 @@ require_once($_SERVER['DOCUMENT_ROOT'] . '/_config.php');
 </head>
 <body data-page="page_home">
 
-<?php include('./src/component/header.php'); ?>
+<?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/header.php'); ?>
 
 <div id="wrapper">
     <div id="main-wrapper" class="layout-page layout-page-404">
@@ -97,7 +97,7 @@ require_once($_SERVER['DOCUMENT_ROOT'] . '/_config.php');
     </div>
 </div>
 
-<?php include('./src/component/footer.php'); ?>
+<?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/footer.php'); ?>
 
 
 

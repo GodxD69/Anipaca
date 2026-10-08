@@ -106,7 +106,7 @@ if(!empty($current_pass) || !empty($new_pass) || !empty($confirm_pass)){
 <body data-page="page_changepass">
   <div id="sidebar_menu_bg"></div>
   <div id="wrapper" data-page="page_home">
-    <?php include 'src/component/header.php'; ?>
+    <?php include $_SERVER['DOCUMENT_ROOT'] . '/src/component/header.php'; ?>
     <div class="clearfix"></div>
 
     <div id="main-wrapper" class="layout-page layout-profile">
@@ -189,7 +189,7 @@ if(!empty($current_pass) || !empty($new_pass) || !empty($confirm_pass)){
         <div class="clearfix"></div>
       </div>
     </div>
-    <?php include 'src/component/footer.php'; ?>
+    <?php include $_SERVER['DOCUMENT_ROOT'] . '/src/component/footer.php'; ?>
     
     <div id="mask-overlay"></div>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js?v=1.5"></script>

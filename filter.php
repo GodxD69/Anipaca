@@ -120,7 +120,7 @@ $itemsPerPage = 36;
 <body data-page="page_anime">
     <div id="sidebar_menu_bg"></div>
     <div id="wrapper" data-page="page_home">
-        <?php include('src/component/header.php'); ?>
+        <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/header.php'); ?>
         <div class="clearfix"></div>
         <div id="main-wrapper" class="layout-page page-az page-filter">
             <div class="container">
@@ -134,7 +134,7 @@ $itemsPerPage = 36;
                 </div>
                 <div class="page-search-wrap">
                     <div id="filter-block">
-                        <?php include('src/component/filter.php'); ?>
+                        <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/filter.php'); ?>
                     </div>
                     <section class="block_area block_area_search">
                         <div class="block_area-header">
@@ -233,7 +233,7 @@ $itemsPerPage = 36;
                 </div>
             </div>
         </div>
-        <?php include('./src/component/footer.php'); ?>
+        <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/footer.php'); ?>
         <div id="mask-overlay"></div>
         
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>

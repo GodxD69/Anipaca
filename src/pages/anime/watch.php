@@ -1,6 +1,6 @@
 <?php
 
-require_once('src/component/anime/qtip.php');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/src/component/anime/qtip.php');
 require_once($_SERVER['DOCUMENT_ROOT'] . '/_config.php');
 require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
 
@@ -219,7 +219,7 @@ $totalVotes = $like_count + $dislike_count;
 <body data-page="movie_watch">
     <div id="sidebar_menu_bg"></div>
     <div id="wrapper" data-page="movie_watch">
-        <?php include('src/component/header.php'); ?>
+        <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/header.php'); ?>
         <div class="clearfix"></div>
         <div id="main-wrapper" class="layout-page layout-page-detail layout-page-watchtv" data-id="<?= htmlspecialchars((string)($animeData['id'] ?? $animeId ?? '')) ?>">
             <div id="ani_detail">
@@ -883,11 +883,11 @@ $totalVotes = $like_count + $dislike_count;
 
 
                 </div>
-                <?php include('src/component/anime/sidenav.php'); ?>
+                <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/anime/sidenav.php'); ?>
                 <div class="clearfix"></div>
             </div>
         </div>
-        <?php include('src/component/footer.php'); ?>
+        <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/footer.php'); ?>
         <div id="mask-overlay"></div>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
         <script type="text/javascript" src="<?= $websiteUrl ?>/src/assets/js/app.js?v=1.4"></script>
@@ -937,6 +937,7 @@ $totalVotes = $like_count + $dislike_count;
                 $(".pc-autoskip").on("click", toggleAutoSkip);
 
                 $iframe.on('load', function () {
+                    $('#embed-loading').fadeOut(250);
                     try {
                         const win = $iframe[0].contentWindow;
                         if (win && win.document) {
@@ -1009,18 +1010,17 @@ $totalVotes = $like_count + $dislike_count;
                     const $subList = $('.ps_-block-sub .ps__-list');
                     const $dubList = $('.ps_-block-dub .ps__-list');
                     currentServerType = localStorage.getItem('preferredServerType') || 'sub';
-                    currentServerName = localStorage.getItem('preferredServerName') || 'Kari';
-                    const preferredServerId = localStorage.getItem('preferredServerId') || 'kari';
+                    currentServerName = localStorage.getItem('preferredServerName') || 'VidLink';
+                    const preferredServerId = (localStorage.getItem('preferredServerId') || 'vidlink').toLowerCase();
                     const preferredServerType = localStorage.getItem('preferredServerType') || 'sub';
-                    let preferredServerFound = false;
 
                     function renderServerButtons(list, type) {
                         if (!list?.length) {
                             return '<div class="item">No servers available</div>';
                         }
                         return list.map((server) => {
-                            const isActive = preferredServerId === server.serverId && preferredServerType === type;
-                            if (isActive) preferredServerFound = true;
+                            const sId = String(server.serverId || '').toLowerCase();
+                            const isActive = (preferredServerId === sId) && (preferredServerType === type);
                             return `
                     <div class="item">
                         <button class="btn btn-server ${isActive ? 'active' : ''}"
@@ -1040,29 +1040,30 @@ $totalVotes = $like_count + $dislike_count;
                     $('#servers-loading').hide();
                     $('#servers-mixed').show();
 
-                    let foundPreferred = $(`.btn-server[data-server-type="${currentServerType}"][data-server-name="${currentServerName}"]`);
+                    let foundPreferred = $(`.btn-server[data-server-type="${currentServerType}"]`).filter(function() {
+                        const sid = String($(this).data('server-id') || $(this).data('server-name')).toLowerCase();
+                        return sid === preferredServerId || sid === String(currentServerName).toLowerCase();
+                    });
                     if (foundPreferred.length) {
                         foundPreferred.first().click();
                     } else {
-                        if (!preferredServerFound || !$('.btn-server.active').length) {
-                            const $firstServer = $('.btn-server').first();
-                            if ($firstServer.length) {
-                                $firstServer.addClass('active');
-                                localStorage.setItem('preferredServerId', $firstServer.data('server-id'));
-                                localStorage.setItem('preferredServerType', $firstServer.data('server-type'));
-                                localStorage.setItem('preferredServerName', $firstServer.data('server-name'));
-                            }
-                        }
                         const $activeServer = $('.btn-server.active').first();
                         if ($activeServer.length) {
                             setTimeout(() => $activeServer.click(), 100);
+                        } else {
+                            const $firstServer = $(`.btn-server[data-server-type="${currentServerType}"]`).first();
+                            if ($firstServer.length) {
+                                $firstServer.click();
+                            } else {
+                                const $any = $('.btn-server').first();
+                                if ($any.length) $any.click();
+                            }
                         }
-                        attachServerListeners();
                     }
                 }
 
                 function buildVidHawkPlayerUrl(serverType, serverName, episodeNumber) {
-                    const serverSlug = String(serverName || 'kari').toLowerCase();
+                    const serverSlug = String(serverName || 'vidlink').toLowerCase();
                     const audio = (serverType === 'dub') ? 'dub' : 'sub';
                     const ep = encodeURIComponent(episodeNumber || '1');
                     return `<?= $websiteUrl ?>/src/player/${audio}.php?mal=${encodeURIComponent(malId)}&anilist=${encodeURIComponent(anilistId)}&server=${encodeURIComponent(serverSlug)}&embed=true&ep=${ep}`;
@@ -1085,16 +1086,20 @@ $totalVotes = $like_count + $dislike_count;
                         localStorage.setItem('preferredServerType', serverType);
                         localStorage.setItem('preferredServerName', serverName);
 
-                        const playerUrl = buildVidHawkPlayerUrl(serverType, serverName, episodeNumber);
+                        const playerUrl = buildVidHawkPlayerUrl(serverType, serverId || serverName, episodeNumber);
                         console.log('Setting player URL:', playerUrl);
-                        setTimeout(() => $iframe.attr('src', playerUrl), 100);
+                        $('#embed-loading').show();
+                        setTimeout(() => $iframe.attr('src', playerUrl), 50);
+                        setTimeout(() => $('#embed-loading').fadeOut(250), 3000);
 
                         updateWatchHistory({
                             episodeNumber: parseInt(episodeNumber, 10)
                         });
 
                         $(".pc-autoskip").off("click").on("click", function () {
+                            $('#embed-loading').show();
                             $iframe.attr('src', buildVidHawkPlayerUrl(currentServerType, currentServerName, episodeNumber));
+                            setTimeout(() => $('#embed-loading').fadeOut(250), 3000);
                         });
                     });
                 }

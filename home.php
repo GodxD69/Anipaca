@@ -76,13 +76,13 @@ $data = $payload['results'];
  
 
 <div id="sidebar_menu_bg" class=""></div>
-        <?php include('./src/component/header.php'); ?>
+        <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/header.php'); ?>
         <div class="clearfix"></div>
         
-        <?php include('./src/component/anime/slidebar.php'); ?>
+        <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/anime/slidebar.php'); ?>
      
         
-        <?php include('./src/component/anime/trending.php') ?>
+        <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/anime/trending.php'); ?>
         
 
         <div class="share-buttons share-buttons-home">
@@ -100,7 +100,7 @@ $data = $payload['results'];
         </div>
 
         <div class="lazy-component mt-3" data-component="apfc">
-            <?php include('./src/component/anime/apfc.php'); ?>
+            <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/anime/apfc.php'); ?>
         </div>
         
                                         
@@ -181,21 +181,21 @@ $data = $payload['results'];
                     } 
                     ?>
 
-                    <?php include('./src/component/anime/latest.php'); ?>
-                    <?php include('./src/component/anime/new-on.php'); ?>
-                    <?php include('./src/component/anime/schedule.php'); ?>
-                    <?php include('./src/component/anime/upcoming.php'); ?>
+                    <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/anime/latest.php'); ?>
+                    <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/anime/new-on.php'); ?>
+                    <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/anime/schedule.php'); ?>
+                    <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/anime/upcoming.php'); ?>
                   
                     </div> 
                 <div class="lazy-component" data-component="sidenav">
-                    <?php include('./src/component/anime/sidenav.php'); ?>
+                    <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/anime/sidenav.php'); ?>
                 </div>
                 <div class="clearfix"></div>
                                
             </div>
         </div>
         <div class="clearfix"></div>
-        <?php include('./src/component/footer.php'); ?>
+        <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/footer.php'); ?>
         <div id="mask-overlay"></div>
      
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>

@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
 <body data-page="page_profile">
   <div id="sidebar_menu_bg"></div>
   <div id="wrapper" data-page="page_home">
-    <?php include 'src/component/header.php'; ?>
+    <?php include $_SERVER['DOCUMENT_ROOT'] . '/src/component/header.php'; ?>
     <div class="clearfix"></div>
 
     <div id="main-wrapper" class="layout-page layout-profile">
@@ -227,8 +227,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
         <div class="clearfix"></div>
       </div>
     </div>
-    <?php include 'src/component/footer.php' ?>
-    <?php include 'public/avatar/avatar.php' ?>
+    <?php include $_SERVER['DOCUMENT_ROOT'] . '/src/component/footer.php'; ?>
+    <?php include $_SERVER['DOCUMENT_ROOT'] . '/public/avatar/avatar.php'; ?>
     <div id="mask-overlay"></div>
       
       <script type="text/javascript">

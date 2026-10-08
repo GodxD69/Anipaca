@@ -3,8 +3,9 @@ header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 
-// VidHawk servers — same set for Sub and Dub
-$vidhawkServers = [
+// Streaming servers: High-speed primary VidLink + VidHawk cluster
+$servers = [
+    ['serverName' => 'VidLink', 'serverId' => 'vidlink'],
     ['serverName' => 'Kari', 'serverId' => 'kari'],
     ['serverName' => 'Flow', 'serverId' => 'flow'],
     ['serverName' => 'Zuri', 'serverId' => 'zuri'],
@@ -13,6 +14,6 @@ $vidhawkServers = [
 
 echo json_encode([
     'success' => true,
-    'sub' => $vidhawkServers,
-    'dub' => $vidhawkServers,
+    'sub' => $servers,
+    'dub' => $servers,
 ]);

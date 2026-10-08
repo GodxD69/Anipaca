@@ -1,6 +1,6 @@
 <?php
 
-require_once('src/component/anime/qtip.php');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/src/component/anime/qtip.php');
 require_once($_SERVER['DOCUMENT_ROOT'] . '/_config.php');
 require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
 
@@ -149,7 +149,7 @@ if (empty($animeData['subEp']) || $animeData['subEp'] === '?' || (int)$animeData
 <body data-page="movie_info">
     <div id="sidebar_menu_bg"></div>
     <div id="wrapper" data-page="page_home">
-        <?php include('src/component/header.php'); ?>
+        <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/header.php'); ?>
         <div class="clearfix"></div>
         <div id="main-wrapper" date-page="movie_info" data-id="<?= htmlspecialchars($animeId) ?>">
             <div id="ani_detail">
@@ -517,12 +517,12 @@ if (empty($animeData['subEp']) || $animeData['subEp'] === '?' || (int)$animeData
                 <div class="clearfix"></div>
             </div>
             <div class="lazy-component">
-                <?php include('src/component/anime/sidenav.php'); ?>
+                <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/anime/sidenav.php'); ?>
             </div>
             <div class="clearfix"></div>
         </div>
     </div>
-    <?php include('src/component/footer.php'); ?>
+    <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/footer.php'); ?>
     <div id="mask-overlay"></div>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.bundle.min.js"></script>

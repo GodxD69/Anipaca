@@ -91,7 +91,7 @@ if ($rawKeyword !== '') {
 <body data-page="page_anime">
     <div id="sidebar_menu_bg"></div>
     <div id="wrapper" data-page="page_home">
-        <?php include('src/component/header.php'); ?>
+        <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/header.php'); ?>
         <div class="clearfix"></div>
         <div id="main-wrapper">
             <div class="container">
@@ -225,11 +225,11 @@ if ($rawKeyword !== '') {
             </div>
                     <div class="clearfix"></div>
                 </div>
-                <?php include('src/component/anime/sidenav.php'); ?>
+                <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/anime/sidenav.php'); ?>
                 <div class="clearfix"></div>
             </div>
         </div>
-        <?php include('./src/component/footer.php'); ?>
+        <?php include($_SERVER['DOCUMENT_ROOT'] . '/src/component/footer.php'); ?>
         <div id="mask-overlay"></div>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 

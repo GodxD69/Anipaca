@@ -125,7 +125,7 @@ $total_pages = ceil($total_site_items / $items_per_page);
 <body data-page="page_watchlist">
   <div id="sidebar_menu_bg"></div>
   <div id="wrapper" data-page="page_home">
-    <?php include 'src/component/header.php'; ?>
+    <?php include $_SERVER['DOCUMENT_ROOT'] . '/src/component/header.php'; ?>
     <div class="clearfix"></div>
 
     <div id="main-wrapper" class="layout-page layout-watchlist">
@@ -256,13 +256,13 @@ $total_pages = ceil($total_site_items / $items_per_page);
                     </div>
                 </div>
             </div>
-            <?php include('./src/component/anime/new-on.php'); ?>
+            <?php include $_SERVER['DOCUMENT_ROOT'] . '/src/component/anime/new-on.php'; ?>
           </div>
         </div>
         <div class="clearfix"></div>
       </div>
     </div>
-    <?php include 'src/component/footer.php' ?>
+    <?php include $_SERVER['DOCUMENT_ROOT'] . '/src/component/footer.php'; ?>
     <div id="mask-overlay"></div>
     
 <script type="text/javascript">
