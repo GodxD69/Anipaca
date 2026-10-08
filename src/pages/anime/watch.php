@@ -937,11 +937,18 @@ $totalVotes = $like_count + $dislike_count;
                 $(".pc-autoskip").on("click", toggleAutoSkip);
 
                 $iframe.on('load', function () {
-                    const videoPlayer = $iframe[0].contentWindow.document.querySelector('video');
-                    if (videoPlayer) {
-                        $(videoPlayer).on('ended', function () {
-                            if (autoNextEnabled) nextEpisode();
-                        });
+                    try {
+                        const win = $iframe[0].contentWindow;
+                        if (win && win.document) {
+                            const videoPlayer = win.document.querySelector('video');
+                            if (videoPlayer) {
+                                $(videoPlayer).on('ended', function () {
+                                    if (autoNextEnabled) nextEpisode();
+                                });
+                            }
+                        }
+                    } catch (e) {
+                        // Cross-origin iframe security expected
                     }
                 });
 

@@ -12,25 +12,41 @@ define('JIKAN_TIMEOUT', 6);
 define('JIKAN_CONNECT_TIMEOUT', 3);
 define('JIKAN_CIRCUIT_SECONDS', 90);
 
+function jikan_cache_dir(): string
+{
+    static $dir = null;
+    if ($dir !== null) return $dir;
+
+    $base = rtrim($_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2), '/\\') . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'jikan';
+    if (!is_dir($base)) {
+        @mkdir($base, 0777, true);
+    }
+    if (!is_dir($base) || !is_writable($base)) {
+        $base = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'anipaca_cache' . DIRECTORY_SEPARATOR . 'jikan';
+        if (!is_dir($base)) {
+            @mkdir($base, 0777, true);
+        }
+    }
+    $dir = $base;
+    return $dir;
+}
+
 function jikan_ensure_cache_dir(): void
 {
-    if (!is_dir(JIKAN_CACHE_DIR)) {
-        mkdir(JIKAN_CACHE_DIR, 0755, true);
-    }
+    jikan_cache_dir();
 }
 
 function jikan_cache_file(string $key): string
 {
-    return JIKAN_CACHE_DIR . DIRECTORY_SEPARATOR . md5($key) . '.json';
+    return jikan_cache_dir() . DIRECTORY_SEPARATOR . md5($key) . '.json';
 }
 
 function jikan_cache_get(string $key, int $ttl = JIKAN_CACHE_TTL)
 {
-    jikan_ensure_cache_dir();
     $file = jikan_cache_file($key);
     if (file_exists($file) && (time() - filemtime($file)) < $ttl) {
         $data = json_decode((string)file_get_contents($file), true);
-        return $data === null ? null : $data;
+        return is_array($data) ? $data : null;
     }
     return null;
 }
@@ -38,24 +54,26 @@ function jikan_cache_get(string $key, int $ttl = JIKAN_CACHE_TTL)
 /** Return cache even if expired (outage fallback). */
 function jikan_cache_get_stale(string $key)
 {
-    jikan_ensure_cache_dir();
     $file = jikan_cache_file($key);
     if (!file_exists($file)) {
         return null;
     }
     $data = json_decode((string)file_get_contents($file), true);
-    return $data === null ? null : $data;
+    return is_array($data) ? $data : null;
 }
 
 function jikan_cache_set(string $key, $data): void
 {
-    jikan_ensure_cache_dir();
-    file_put_contents(jikan_cache_file($key), json_encode($data));
+    $file = jikan_cache_file($key);
+    $dir = dirname($file);
+    if (is_dir($dir) && is_writable($dir)) {
+        @file_put_contents($file, json_encode($data));
+    }
 }
 
 function jikan_circuit_file(): string
 {
-    return JIKAN_CACHE_DIR . DIRECTORY_SEPARATOR . '_circuit.json';
+    return jikan_cache_dir() . DIRECTORY_SEPARATOR . '_circuit.json';
 }
 
 function jikan_circuit_open(): bool
@@ -154,23 +172,11 @@ function jikan_request(string $path, array $query = [], int $ttl = JIKAN_CACHE_T
     return $data;
 }
 
-/** Category/list helper for home partials (no nested HTTP). */
+/** Category/list helper for home partials (ultra-fast in-memory + AniList GraphQL). */
 function jikan_category_list(string $category, int $page = 1): array
 {
     require_once __DIR__ . '/anilist_client.php';
 
-    $cfg = jikan_category_query($category, $page);
-    $list = jikan_list_response(jikan_request($cfg['path'], $cfg['query'], JIKAN_CACHE_TTL, 1));
-    if (!empty($list['results']['data'])) {
-        return $list;
-    }
-
-    $al = anilist_category($category, $page);
-    if (!empty($al['results']['data'])) {
-        return $al;
-    }
-
-    // Soft fallback from cached home so Latest/Upcoming never hang empty forever
     $homeKeyMap = [
         'recently-updated' => 'topAiring',
         'recently-added' => 'topAiring',
@@ -185,8 +191,8 @@ function jikan_category_list(string $category, int $page = 1): array
         'tv' => 'topAiring',
     ];
     $homeKey = $homeKeyMap[$category] ?? null;
-    if ($homeKey) {
-        $home = jikan_cache_get_stale('home:composite:v3') ?: jikan_cache_get_stale('home:composite:v2');
+    if ($homeKey && $page === 1) {
+        $home = anilist_home();
         $cards = $home['results'][$homeKey] ?? [];
         if ($cards) {
             return jikan_ok([
@@ -199,7 +205,14 @@ function jikan_category_list(string $category, int $page = 1): array
             ]);
         }
     }
-    return $list;
+
+    $al = anilist_category($category, $page);
+    if (!empty($al['results']['data'])) {
+        return $al;
+    }
+
+    $cfg = jikan_category_query($category, $page);
+    return jikan_list_response(jikan_request($cfg['path'], $cfg['query'], JIKAN_CACHE_TTL, 1));
 }
 
 function jikan_ok($results): array
@@ -516,6 +529,13 @@ function jikan_home(): array
     $cached = jikan_cache_get($cacheKey, JIKAN_HOME_TTL);
     if (is_array($cached) && jikan_home_complete($cached)) {
         return $cached;
+    }
+
+    require_once __DIR__ . '/anilist_client.php';
+    $alHome = anilist_home();
+    if (!empty($alHome['success']) && !empty($alHome['results']['spotlights'])) {
+        jikan_cache_set($cacheKey, $alHome);
+        return $alHome;
     }
 
     $topList = jikan_map_list(jikan_request('/top/anime', ['limit' => 25]));

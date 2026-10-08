@@ -10,10 +10,20 @@ define('ANILIST_TIMEOUT', 15);
 
 function anilist_cache_dir(): string
 {
-    $dir = rtrim($_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2), '/\\') . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'anilist';
-    if (!is_dir($dir)) {
-        mkdir($dir, 0755, true);
+    static $dir = null;
+    if ($dir !== null) return $dir;
+
+    $base = rtrim($_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2), '/\\') . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'anilist';
+    if (!is_dir($base)) {
+        @mkdir($base, 0777, true);
     }
+    if (!is_dir($base) || !is_writable($base)) {
+        $base = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'anipaca_cache' . DIRECTORY_SEPARATOR . 'anilist';
+        if (!is_dir($base)) {
+            @mkdir($base, 0777, true);
+        }
+    }
+    $dir = $base;
     return $dir;
 }
 
@@ -39,7 +49,10 @@ function anilist_cache_get_stale(string $key)
 
 function anilist_cache_set(string $key, $data): void
 {
-    file_put_contents(anilist_cache_dir() . DIRECTORY_SEPARATOR . md5($key) . '.json', json_encode($data));
+    $dir = anilist_cache_dir();
+    if (is_dir($dir) && is_writable($dir)) {
+        @file_put_contents($dir . DIRECTORY_SEPARATOR . md5($key) . '.json', json_encode($data));
+    }
 }
 
 function anilist_graphql(string $query, array $variables = []): ?array
@@ -947,3 +960,102 @@ function anilist_info_by_mal(int $malId): array
     anilist_cache_set($cacheKey, $payload);
     return $payload;
 }
+
+/**
+ * Super-fast unified home data query via AniList GraphQL
+ * Fetches all categories in ONE single request (~200ms) with MAL ID mapping
+ */
+function anilist_home(): array
+{
+    $cacheKey = 'home:composite:v3';
+    $cached = anilist_cache_get($cacheKey, 1800);
+    if (is_array($cached) && !empty($cached['success']) && !empty($cached['results']['spotlights'])) {
+        return $cached;
+    }
+
+    $query = <<<'GQL'
+query {
+  trending: Page(page: 1, perPage: 14) {
+    media(type: ANIME, sort: TRENDING_DESC, isAdult: false) {
+      id idMal title { english romaji native } coverImage { large medium }
+      episodes nextAiringEpisode { episode } duration format description isAdult startDate { year month day }
+    }
+  }
+  popular: Page(page: 1, perPage: 14) {
+    media(type: ANIME, sort: POPULARITY_DESC, isAdult: false) {
+      id idMal title { english romaji native } coverImage { large medium }
+      episodes nextAiringEpisode { episode } duration format description isAdult startDate { year month day }
+    }
+  }
+  airing: Page(page: 1, perPage: 14) {
+    media(type: ANIME, status: RELEASING, sort: POPULARITY_DESC, isAdult: false) {
+      id idMal title { english romaji native } coverImage { large medium }
+      episodes nextAiringEpisode { episode } duration format description isAdult startDate { year month day }
+    }
+  }
+  favorite: Page(page: 1, perPage: 14) {
+    media(type: ANIME, sort: FAVOURITES_DESC, isAdult: false) {
+      id idMal title { english romaji native } coverImage { large medium }
+      episodes nextAiringEpisode { episode } duration format description isAdult startDate { year month day }
+    }
+  }
+  completed: Page(page: 1, perPage: 14) {
+    media(type: ANIME, status: FINISHED, sort: SCORE_DESC, isAdult: false) {
+      id idMal title { english romaji native } coverImage { large medium }
+      episodes nextAiringEpisode { episode } duration format description isAdult startDate { year month day }
+    }
+  }
+}
+GQL;
+
+    $res = anilist_graphql($query);
+    $data = $res['data'] ?? [];
+
+    $mapList = function (?array $mediaList) {
+        $cards = [];
+        if (!is_array($mediaList)) return $cards;
+        foreach ($mediaList as $m) {
+            $c = anilist_map_card($m);
+            if ($c !== null) {
+                $cards[] = $c;
+            }
+        }
+        return $cards;
+    };
+
+    $trendingList = $mapList($data['trending']['media'] ?? []);
+    $popularList = $mapList($data['popular']['media'] ?? []);
+    $airingList = $mapList($data['airing']['media'] ?? []);
+    $favoriteList = $mapList($data['favorite']['media'] ?? []);
+    $completedList = $mapList($data['completed']['media'] ?? []);
+
+    if (!$trendingList && !$popularList) {
+        $stale = anilist_cache_get_stale($cacheKey);
+        if ($stale) return $stale;
+    }
+
+    $spotlights = array_slice($popularList ?: $trendingList, 0, 8);
+    $trending = [];
+    foreach (array_slice($trendingList ?: $popularList, 0, 10) as $i => $item) {
+        $item['number'] = $i + 1;
+        $trending[] = $item;
+    }
+
+    $payload = [
+        'success' => true,
+        'results' => [
+            'spotlights' => $spotlights,
+            'trending' => $trending,
+            'topAiring' => $airingList ?: $trendingList,
+            'mostPopular' => $popularList ?: $trendingList,
+            'mostFavorite' => $favoriteList ?: $popularList,
+            'latestCompleted' => $completedList ?: array_slice($popularList, 0, 10),
+        ]
+    ];
+
+    if ($spotlights) {
+        anilist_cache_set($cacheKey, $payload);
+    }
+    return $payload;
+}
+
