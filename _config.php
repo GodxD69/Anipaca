@@ -1,4 +1,7 @@
-<?php 
+<?php
+if (empty($_SERVER['DOCUMENT_ROOT']) || !file_exists($_SERVER['DOCUMENT_ROOT'] . '/_config.php')) {
+    $_SERVER['DOCUMENT_ROOT'] = __DIR__;
+}
 require_once __DIR__ . '/src/component/database.php';
 
 global $conn, $websiteTitle, $websiteUrl, $websiteLogo, $contactEmail, $version, $discord, $github, $telegram, $instagram, $zpi, $proxy, $banner;
