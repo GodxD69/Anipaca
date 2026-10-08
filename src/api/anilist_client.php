@@ -864,17 +864,136 @@ function anilist_date_string(?array $date): string
     );
 }
 
-/** Full /info payload when Jikan/MAL is unavailable. */
+/** Full /info payload when Jikan/MAL is unavailable (single unified GraphQL query). */
 function anilist_info_by_mal(int $malId): array
 {
-    $cacheKey = 'mapped:anilist-info:v2:' . $malId;
+    $cacheKey = 'mapped:anilist-info:v3:' . $malId;
     $cached = anilist_cache_get($cacheKey);
     if (is_array($cached) && !empty($cached['success'])) {
         return $cached;
     }
 
-    $m = anilist_media_by_mal($malId);
+    $query = <<<'GRAPHQL'
+query ($idMal: Int) {
+  Media(idMal: $idMal, type: ANIME) {
+    id
+    idMal
+    title {
+      romaji
+      english
+      native
+    }
+    coverImage {
+      extraLarge
+      large
+      medium
+      color
+    }
+    bannerImage
+    startDate { year month day }
+    endDate { year month day }
+    description(asHtml: false)
+    season
+    seasonYear
+    episodes
+    duration
+    format
+    status
+    genres
+    synonyms
+    averageScore
+    isAdult
+    nextAiringEpisode {
+      episode
+      timeUntilAiring
+    }
+    studios(isMain: true) {
+      nodes {
+        name
+      }
+    }
+    relations {
+      edges {
+        relationType
+        node {
+          id
+          idMal
+          title {
+            romaji
+            english
+            native
+          }
+          coverImage {
+            large
+            medium
+          }
+          format
+          episodes
+          status
+          isAdult
+        }
+      }
+    }
+    recommendations(page: 1, perPage: 12, sort: RATING_DESC) {
+      nodes {
+        mediaRecommendation {
+          id
+          idMal
+          title {
+            romaji
+            english
+            native
+          }
+          coverImage {
+            large
+            medium
+          }
+          format
+          episodes
+          status
+          isAdult
+        }
+      }
+    }
+    characters(page: 1, perPage: 24, sort: [ROLE, RELEVANCE]) {
+      edges {
+        role
+        node {
+          id
+          name {
+            full
+            userPreferred
+          }
+          image {
+            large
+            medium
+          }
+        }
+        voiceActors(language: JAPANESE, sort: [RELEVANCE]) {
+          id
+          name {
+            full
+            userPreferred
+          }
+          image {
+            large
+            medium
+          }
+          languageV2
+        }
+      }
+    }
+  }
+}
+GRAPHQL;
+
+    $res = anilist_graphql($query, ['idMal' => $malId]);
+    $m = $res['data']['Media'] ?? null;
     if (!$m) {
+        $stale = anilist_cache_get_stale($cacheKey);
+        if (is_array($stale) && !empty($stale['success'])) {
+            return $stale;
+        }
         return ['success' => false, 'message' => 'Anime not found', 'results' => null];
     }
 
@@ -911,12 +1030,57 @@ function anilist_info_by_mal(int $malId): array
     }
 
     $seasonName = trim(($m['season'] ?? '') . ' ' . ($m['seasonYear'] ?? ''));
-    $al = anilist_recommendations_by_mal($malId);
-    $recommended = $al['recommended'] ?? [];
-    $relations = $al['related'] ?? [];
-    $charactersVoiceActors = anilist_characters_for_mal($malId);
+
+    // Process recommendations
+    $recommended = [];
+    foreach ($m['recommendations']['nodes'] ?? [] as $node) {
+        $recMedia = $node['mediaRecommendation'] ?? null;
+        if ($recMedia) {
+            $recCard = anilist_map_card($recMedia);
+            if ($recCard) {
+                $recommended[] = $recCard;
+            }
+        }
+    }
+
+    // Process relations
+    $relations = [];
+    foreach ($m['relations']['edges'] ?? [] as $edge) {
+        $relNode = $edge['node'] ?? null;
+        if ($relNode) {
+            $relCard = anilist_map_card($relNode);
+            if ($relCard) {
+                $relations[] = $relCard;
+            }
+        }
+    }
+
     if (!$recommended && $relations) {
         $recommended = $relations;
+    }
+
+    // Process characters & Japanese voice actors
+    $charactersVoiceActors = [];
+    foreach ($m['characters']['edges'] ?? [] as $edge) {
+        $chNode = $edge['node'] ?? [];
+        $vas = [];
+        foreach ($edge['voiceActors'] ?? [] as $va) {
+            $vas[] = [
+                'id' => (string)($va['id'] ?? ''),
+                'name' => $va['name']['userPreferred'] ?? ($va['name']['full'] ?? 'Unknown'),
+                'poster' => $va['image']['large'] ?? ($va['image']['medium'] ?? ''),
+                'language' => 'Japanese',
+            ];
+        }
+        $charactersVoiceActors[] = [
+            'character' => [
+                'id' => (string)($chNode['id'] ?? ''),
+                'name' => $chNode['name']['userPreferred'] ?? ($chNode['name']['full'] ?? 'Unknown'),
+                'poster' => $chNode['image']['large'] ?? ($chNode['image']['medium'] ?? ''),
+                'cast' => $edge['role'] ?? null,
+            ],
+            'voiceActors' => $vas,
+        ];
     }
 
     $payload = [
@@ -926,7 +1090,7 @@ function anilist_info_by_mal(int $malId): array
                 'id' => $card['id'],
                 'data_id' => $card['id'],
                 'malId' => $m['idMal'] ?? $malId,
-                'anilistId' => $m['id'] ?? ($al['anilistId'] ?? null),
+                'anilistId' => $m['id'] ?? null,
                 'title' => $card['title'],
                 'jname' => $card['jname'],
                 'poster' => $card['poster'],

@@ -8,6 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $rawKeyword = trim((string)($_GET['keyword'] ?? ''));
 $keyword = urlencode($rawKeyword);
+$query = $rawKeyword;
 $page = max(1, (int)($_GET['page'] ?? 1));
 $currentPage = $page;
 $searchResults = [];

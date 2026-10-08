@@ -96,6 +96,32 @@ class SQLiteStmtWrapper {
         $this->pdo = $pdo;
         // Transform MySQL-specific functions if needed
         $sql = preg_replace('/\bNOW\(\)/i', "datetime('now', 'localtime')", $sql);
+        
+        // Translate MySQL ON DUPLICATE KEY UPDATE for watch_history
+        if (preg_match('/INSERT\s+INTO\s+watch_history/i', $sql) && preg_match('/ON\s+DUPLICATE\s+KEY\s+UPDATE/i', $sql)) {
+            $sql = "INSERT INTO watch_history 
+                    (user_id, anime_id, anime_name, poster, sub_count, dub_count, episode_number, created_at, updated_at) 
+                    VALUES 
+                    (?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime')) 
+                    ON CONFLICT(user_id, anime_id) DO UPDATE SET 
+                    episode_number = excluded.episode_number,
+                    poster = excluded.poster,
+                    sub_count = excluded.sub_count,
+                    dub_count = excluded.dub_count,
+                    updated_at = datetime('now', 'localtime')";
+        }
+        
+        // Translate MySQL ON DUPLICATE KEY UPDATE for watched_episode
+        if (preg_match('/INSERT\s+INTO\s+watched_episode/i', $sql) && preg_match('/ON\s+DUPLICATE\s+KEY\s+UPDATE/i', $sql)) {
+            $sql = "INSERT INTO watched_episode 
+                    (user_id, anime_id, episodes_watched, updated_at) 
+                    VALUES 
+                    (?, ?, ?, datetime('now', 'localtime')) 
+                    ON CONFLICT(user_id, anime_id) DO UPDATE SET 
+                    episodes_watched = excluded.episodes_watched,
+                    updated_at = datetime('now', 'localtime')";
+        }
+
         try {
             $this->stmt = $this->pdo->prepare($sql);
         } catch (PDOException $e) {
@@ -164,33 +190,38 @@ class AnipacaDatabase {
     private $mysqli = null;
     private $isSQLite = false;
 
-    public function __construct($host = "localhost", $user = "root", $pass = "", $db = "anipaca") {
+    public function __construct($host = null, $user = null, $pass = null, $db = null) {
         @mysqli_report(MYSQLI_REPORT_OFF);
         
         // Check for environment variables (Vercel / Cloud MySQL)
-        $host = getenv('DB_HOST') ?: getenv('MYSQLHOST') ?: $host;
-        $user = getenv('DB_USER') ?: getenv('MYSQLUSER') ?: $user;
-        $pass = getenv('DB_PASS') ?: getenv('MYSQLPASSWORD') ?: $pass;
-        $db   = getenv('DB_NAME') ?: getenv('MYSQLDATABASE') ?: $db;
+        $dbHost = getenv('DB_HOST') ?: getenv('MYSQLHOST') ?: $host;
+        $dbUser = getenv('DB_USER') ?: getenv('MYSQLUSER') ?: $user;
+        $dbPass = getenv('DB_PASS') ?: getenv('MYSQLPASSWORD') ?: $pass;
+        $dbName = getenv('DB_NAME') ?: getenv('MYSQLDATABASE') ?: ($db ?: "anipaca");
         $port = (int)(getenv('DB_PORT') ?: getenv('MYSQLPORT') ?: 3306);
         
-        // Try MySQL first
-        try {
-            $m = @new mysqli($host, $user, $pass, null, $port);
-            if (!$m->connect_error) {
-                @$m->query("CREATE DATABASE IF NOT EXISTS `{$db}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-                if ($m->select_db($db)) {
-                    $m->set_charset("utf8mb4");
-                    $this->mysqli = $m;
-                    $this->autoInitMySQL();
-                    return;
+        // Only try MySQL if a MySQL host is explicitly set (prevents 4s TCP timeout on Windows when MySQL is offline)
+        if (!empty($dbHost) && $dbHost !== 'auto') {
+            try {
+                $m = mysqli_init();
+                if ($m) {
+                    $m->options(MYSQLI_OPT_CONNECT_TIMEOUT, 1);
+                    if (@$m->real_connect($dbHost, $dbUser ?: 'root', $dbPass ?: '', null, $port)) {
+                        @$m->query("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                        if ($m->select_db($dbName)) {
+                            $m->set_charset("utf8mb4");
+                            $this->mysqli = $m;
+                            $this->autoInitMySQL();
+                            return;
+                        }
+                    }
                 }
+            } catch (Throwable $e) {
+                // MySQL unavailable
             }
-        } catch (Throwable $e) {
-            // MySQL unavailable
         }
 
-        // Fallback to SQLite (with /tmp fallback for Vercel serverless)
+        // Fallback to SQLite (instant 0ms init with /tmp fallback for Vercel serverless)
         $this->isSQLite = true;
         $dbDir = __DIR__ . '/../../data';
         if (!is_dir($dbDir)) {

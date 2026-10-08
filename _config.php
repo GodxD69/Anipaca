@@ -4,7 +4,7 @@ require_once __DIR__ . '/src/component/database.php';
 global $conn, $websiteTitle, $websiteUrl, $websiteLogo, $contactEmail, $version, $discord, $github, $telegram, $instagram, $zpi, $proxy, $banner;
 
 if (!isset($conn) || !$conn) {
-    $conn = new AnipacaDatabase("localhost", "root", "", "anipaca");
+    $conn = new AnipacaDatabase();
 }
 $GLOBALS['conn'] = $conn;
 

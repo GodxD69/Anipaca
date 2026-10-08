@@ -306,18 +306,18 @@ function jikan_episode_total(string $id): int
         return (int)$cached;
     }
 
-    $anime = jikan_request('/anime/' . rawurlencode($id), [], JIKAN_CACHE_TTL, 1);
-    $total = (int)($anime['data']['episodes'] ?? 0);
-    if ($total > 0) {
-        jikan_cache_set($cacheKey, $total);
-        return $total;
-    }
-
-    // Prefer AniList nextAiringEpisode (accurate for long-running shows)
+    // Prefer AniList (ultra-fast GraphQL and accurate for long-running/airing shows)
     require_once __DIR__ . '/anilist_client.php';
     $counts = anilist_episode_counts_by_mal([(int)$id]);
     if (!empty($counts[(int)$id])) {
         $total = (int)$counts[(int)$id];
+        jikan_cache_set($cacheKey, $total);
+        return $total;
+    }
+
+    $anime = jikan_request('/anime/' . rawurlencode($id), [], JIKAN_CACHE_TTL, 1);
+    $total = (int)($anime['data']['episodes'] ?? 0);
+    if ($total > 0) {
         jikan_cache_set($cacheKey, $total);
         return $total;
     }
@@ -1124,15 +1124,15 @@ function jikan_anime_schedule(string $id): array
 function jikan_search(string $keyword, int $page = 1): array
 {
     require_once __DIR__ . '/anilist_client.php';
-    $list = jikan_list_response(jikan_request('/anime', [
+    $al = anilist_search($keyword, $page);
+    if (!empty($al['results']['data'])) {
+        return $al;
+    }
+    return jikan_list_response(jikan_request('/anime', [
         'q' => $keyword,
         'page' => $page,
         'sfw' => 'true',
     ], JIKAN_CACHE_TTL, 1));
-    if (!empty($list['results']['data'])) {
-        return $list;
-    }
-    return anilist_search($keyword, $page);
 }
 
 function jikan_filter(array $params): array

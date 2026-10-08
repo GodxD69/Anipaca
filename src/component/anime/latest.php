@@ -17,13 +17,17 @@
                                 <div class="film_list-wrap">
                                     
                                     <?php
-                                    require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
-                                    $json = jikan_category_list('recently-updated');
-
-                                    // Check if 'results' and 'data' exist
-                                    if (isset($json['results']['data']) && is_array($json['results']['data'])) {
-                                        $animeList = array_slice($json['results']['data'], 0, 12);
-                                        foreach ($animeList as $anime) { ?>
+                                    $animeList = [];
+                                    if (!empty($data['latestEpisode']) && is_array($data['latestEpisode'])) {
+                                        $animeList = array_slice($data['latestEpisode'], 0, 12);
+                                    } else {
+                                        require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
+                                        $json = jikan_category_list('recently-updated');
+                                        if (isset($json['results']['data']) && is_array($json['results']['data'])) {
+                                            $animeList = array_slice($json['results']['data'], 0, 12);
+                                        }
+                                    }
+                                    foreach ($animeList as $anime) { ?>
                                             <?php if (!empty($anime['tvInfo']['sub'])): ?>
                                             <div class="flw-item">
                                                 <div class="film-poster">
@@ -70,7 +74,7 @@
                                             </div>
                                             <?php endif; ?>
                                     <?php }
-                                    } else {
+                                    if (empty($animeList)) {
                                         echo "<p>No anime data available or invalid structure.</p>";
                                     } ?>
 

@@ -1,14 +1,20 @@
 <?php
-require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
-$data = jikan_top_ten();
-
 $todayResults = [];
 $weekResults = [];
 $monthResults = [];
-if (!empty($data['success'])) {
-    $todayResults = $data['results']['today'] ?? [];
-    $weekResults = $data['results']['week'] ?? [];
-    $monthResults = $data['results']['month'] ?? [];
+
+if (!empty($data['top10']['today'])) {
+    $todayResults = $data['top10']['today'];
+    $weekResults = $data['top10']['week'] ?? [];
+    $monthResults = $data['top10']['month'] ?? [];
+} else {
+    require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
+    $topTenRes = jikan_top_ten();
+    if (!empty($topTenRes['success'])) {
+        $todayResults = $topTenRes['results']['today'] ?? [];
+        $weekResults = $topTenRes['results']['week'] ?? [];
+        $monthResults = $topTenRes['results']['month'] ?? [];
+    }
 }
 ?>
 

@@ -13,15 +13,19 @@
         <div class="block_area-content block_area-list film_list film_list-grid film_list-wfeature ">
             <div class="film_list-wrap">
                 <?php
-                require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
-                $json = jikan_category_list('top-upcoming');
-
-                // Check if 'results' and 'data' exist
-                if (isset($json['results']['data']) && is_array($json['results']['data'])) {
-                    $animeList = array_slice($json['results']['data'], 0, 12);
-                    foreach ($animeList as $anime) {
-                        $title = !empty($anime['title']) ? $anime['title'] : 'Unknown';
-                        $jname = !empty($anime['jname']) ? $anime['jname'] : $title;
+                $animeList = [];
+                if (!empty($data['topUpcoming']) && is_array($data['topUpcoming'])) {
+                    $animeList = array_slice($data['topUpcoming'], 0, 12);
+                } else {
+                    require_once($_SERVER['DOCUMENT_ROOT'] . '/src/api/jikan_client.php');
+                    $json = jikan_category_list('top-upcoming');
+                    if (isset($json['results']['data']) && is_array($json['results']['data'])) {
+                        $animeList = array_slice($json['results']['data'], 0, 12);
+                    }
+                }
+                foreach ($animeList as $anime) {
+                    $title = !empty($anime['title']) ? $anime['title'] : 'Unknown';
+                    $jname = !empty($anime['jname']) ? $anime['jname'] : $title;
                 ?>
                 <div class="flw-item">
                     <div class="film-poster">
@@ -77,9 +81,9 @@
                 </div>
                 <?php
                     }
-                } else {
-                    echo "<p>No anime data available or invalid structure.</p>";
-                }
+                    if (empty($animeList)) {
+                        echo "<p>No anime data available or invalid structure.</p>";
+                    }
                 ?>
             </div>
             <div class="clearfix"></div>
